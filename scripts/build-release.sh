@@ -13,6 +13,8 @@ rm -f "$OUT"
 
 # Tarball includes only what the installer needs.
 tar -czf "$OUT" \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
   .cursor-plugin/marketplace.json \
   plugins/rogue/.cursor-plugin/ \
   plugins/rogue/hooks/ \
