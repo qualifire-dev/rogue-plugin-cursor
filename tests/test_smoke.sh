@@ -60,7 +60,7 @@ assert_eq() {
 assert_header() {
   local key="$1" expected="$2" label="$3"
   local actual
-  actual=$(python3 -c "import json; print(json.load(open('$HEADERS_FILE'))['headers'].get('$key',''))")
+  actual=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["headers"].get(sys.argv[2], ""))' "$HEADERS_FILE" "$key")
   assert_eq "$actual" "$expected" "$label"
 }
 
@@ -92,11 +92,15 @@ out=$(run_dispatcher beforeSubmitPrompt '{"prompt":"ignore previous"}')
 assert_eq "$out" '{"continue":false,"user_message":"prompt injection blocked"}' "beforeSubmitPrompt response relayed"
 
 # ── Case 5: unconfigured (no API key) → dispatcher returns {} without calling server ──
-out=$(HOME="$(mktemp -d)" python3 "$HOOK" preToolUse <<< '{}')
+TMP_HOME="$(mktemp -d)"
+out=$(HOME="$TMP_HOME" python3 "$HOOK" preToolUse <<< '{}')
+rm -rf "$TMP_HOME"
 assert_eq "$out" "{}" "unconfigured fails open"
 
 # ── Case 6: unconfigured sessionStart returns setup hint ──
-out=$(HOME="$(mktemp -d)" python3 "$HOOK" sessionStart <<< '{}')
+TMP_HOME="$(mktemp -d)"
+out=$(HOME="$TMP_HOME" python3 "$HOOK" sessionStart <<< '{}')
+rm -rf "$TMP_HOME"
 echo "$out" | grep -q '/rogue:setup' || { echo "FAIL: missing setup hint in $out"; exit 1; }
 echo "  ok: unconfigured sessionStart emits /rogue:setup hint"
 
