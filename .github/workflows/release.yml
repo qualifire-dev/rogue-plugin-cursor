@@ -25,18 +25,29 @@ jobs:
         with:
           ref: ${{ env.TAG }}
 
-      - name: Verify tag matches plugin version
+      - name: Verify tag matches plugin versions
         run: |
           tag_version="${TAG#v}"
           plugin_version=$(jq -r .version plugins/rogue/.cursor-plugin/plugin.json)
-          marketplace_version=$(jq -r '.plugins[] | select(.name == "rogue") | .version' .cursor-plugin/marketplace.json)
+          marketplace_version=$(
+            jq -r '.plugins[] | select(.source == "./plugins/rogue") | .version' \
+              .cursor-plugin/marketplace.json
+          )
           echo "tag=$tag_version plugin.json=$plugin_version marketplace.json=$marketplace_version"
+          if [ -z "$marketplace_version" ] || [ "$marketplace_version" = "null" ]; then
+            echo "::error::no plugin entry with source ./plugins/rogue in marketplace.json"
+            exit 1
+          fi
           if [ "$tag_version" != "$plugin_version" ]; then
             echo "::error::tag $TAG does not match plugin.json version $plugin_version"
             exit 1
           fi
           if [ "$tag_version" != "$marketplace_version" ]; then
-            echo "::error::tag $TAG does not match marketplace.json version $marketplace_version"
+            echo "::error::tag $TAG does not match marketplace.json plugin version $marketplace_version"
+            exit 1
+          fi
+          if [ "$plugin_version" != "$marketplace_version" ]; then
+            echo "::error::plugin.json ($plugin_version) and marketplace.json ($marketplace_version) are out of sync"
             exit 1
           fi
 
