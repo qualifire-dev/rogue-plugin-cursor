@@ -29,14 +29,19 @@ trap cleanup EXIT
 log()  { printf "→ %s\n" "$*"; }
 warn() { printf "⚠ %s\n" "$*" >&2; }
 err()  { printf "✗ %s\n" "$*" >&2; exit 1; }
+need_arg() {
+  if [ $# -lt 2 ] || [ -z "${2:-}" ]; then
+    err "$1 requires a value"
+  fi
+}
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --api-key)         API_KEY="${2:-}"; shift 2 ;;
-    --email)           ACTOR_EMAIL="${2:-}"; shift 2 ;;
-    --name)            ACTOR_NAME="${2:-}"; shift 2 ;;
-    --api-url)         API_URL="${2:-}"; shift 2 ;;
-    --local)           LOCAL_PATH="${2:-}"; shift 2 ;;
+    --api-key)         need_arg "$@"; API_KEY="$2"; shift 2 ;;
+    --email)           need_arg "$@"; ACTOR_EMAIL="$2"; shift 2 ;;
+    --name)            need_arg "$@"; ACTOR_NAME="$2"; shift 2 ;;
+    --api-url)         need_arg "$@"; API_URL="$2"; shift 2 ;;
+    --local)           need_arg "$@"; LOCAL_PATH="$2"; shift 2 ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
     *) shift ;;
   esac
@@ -127,16 +132,18 @@ log "Installed → $PLUGIN_INSTALL_DIR"
 if [ "${ROGUE_TEMPLATE_HOOKS:-1}" = "1" ]; then
   HOOKS_FILE="$PLUGIN_INSTALL_DIR/hooks/hooks.json"
   if [ -f "$HOOKS_FILE" ]; then
-    python3 - <<PY
-import json, sys
-p = "$HOOKS_FILE"
-root = "$PLUGIN_INSTALL_DIR"
-with open(p) as f: d = json.load(f)
-def fix(s): return s.replace("\${CURSOR_PLUGIN_ROOT}", root)
+    ROGUE_HOOKS_PATH="$HOOKS_FILE" ROGUE_INSTALL_ROOT="$PLUGIN_INSTALL_DIR" python3 - <<'PY'
+import json, os
+p = os.environ["ROGUE_HOOKS_PATH"]
+root = os.environ["ROGUE_INSTALL_ROOT"]
+with open(p) as f:
+    d = json.load(f)
 for ev, entries in d.get("hooks", {}).items():
     for e in entries:
-        if "command" in e: e["command"] = fix(e["command"])
-with open(p, "w") as f: json.dump(d, f, indent=2)
+        if "command" in e:
+            e["command"] = e["command"].replace("${CURSOR_PLUGIN_ROOT}", root)
+with open(p, "w") as f:
+    json.dump(d, f, indent=2)
 PY
     log "Templated hook paths to $PLUGIN_INSTALL_DIR"
   fi
