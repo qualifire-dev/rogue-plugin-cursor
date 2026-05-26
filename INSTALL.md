@@ -18,18 +18,19 @@ In the Cursor admin dashboard:
 1. Open **Settings → Plugins**.
 2. Under **Team Marketplaces**, click **Import**.
 3. Paste the repository URL:
-   ```
-   https://github.com/qualifire-dev/rogue-plugin-cursor
-   ```
+  ```
+   https://github.com/qualifire-dev/rogue-plugin-cursorgst
+
+  ```
 4. Cursor parses the marketplace and shows the `rogue` plugin. Set a marketplace **name** (e.g. "Rogue Security") and **description**.
 5. Under **Team Access**, choose which distribution groups receive the plugin — typically all developers.
 6. Set the `rogue` plugin distribution mode to **Required**:
 
-    | Mode          | Behavior                                                                |
-    |---------------|-------------------------------------------------------------------------|
-    | Default Off   | Visible in the marketplace; developer chooses to install.               |
-    | Default On    | Installed automatically; developer can uninstall.                       |
-    | **Required**  | Installed automatically; developer **cannot** uninstall or disable it.  |
+  | Mode         | Behavior                                                               |
+  | ------------ | ---------------------------------------------------------------------- |
+  | Default Off  | Visible in the marketplace; developer chooses to install.              |
+  | Default On   | Installed automatically; developer can uninstall.                      |
+  | **Required** | Installed automatically; developer **cannot** uninstall or disable it. |
 
    Cursor's own guidance is to reserve **Required** for security-critical tools — that's the right mode here.
 
@@ -44,18 +45,20 @@ Each install needs `ROGUE_API_KEY` (and optionally `ROGUE_ACTOR_EMAIL` and `ROGU
 - **MDM-managed system env file** (*recommended for Enterprise*) — push `/etc/rogue/env` (mode 600) via Jamf, Intune, or Kandji. No developer action required; works the moment Cursor launches.
 - **Per-user setup command** — developers run `/rogue:setup` inside Cursor once after install, which writes `~/.rogue-env`. Works well for smaller teams.
 - **MDM provisioning script** — push a script that runs the one-line installer in `--non-interactive` mode with `ROGUE_API_KEY` pre-set.
-- **Pre-compiled plugin tarball with the key baked in** — if you'd rather not run MDM at all, contact us and we'll ship you a tarball produced by [`scripts/compile-customer-plugin.sh`](../scripts/compile-customer-plugin.sh). The key sits in an `env` file at the plugin root and is picked up automatically.
+- **Pre-compiled plugin tarball with the key baked in** — if you'd rather not run MDM at all, contact us and we'll ship you a tarball produced by `[scripts/compile-customer-plugin.sh](../scripts/compile-customer-plugin.sh)`. The key sits in an `env` file at the plugin root and is picked up automatically.
 
 > **About the API key**: the Rogue API key is an **attribution token**, not a credential in the usual sense. It can only POST hook events to `api.rogue.security` — it cannot read data, fetch configuration, or change anything on your org. Treat a leaked key as a noise-attribution problem (rotate it in the dashboard and re-ship), not a data-exfiltration one.
 
-API keys are issued at <https://app.rogue.security/settings/api-keys>.
+API keys are issued at [https://app.rogue.security/settings/api-keys](https://app.rogue.security/settings/api-keys).
 
 ### Plan sizing
 
+
 | Plan       | Team marketplaces |
-|------------|-------------------|
+| ---------- | ----------------- |
 | Teams      | 1                 |
 | Enterprise | Unlimited         |
+
 
 ---
 
@@ -95,14 +98,16 @@ After install, **fully quit Cursor and reopen**, then run `/rogue:status` to ver
 
 These environment variables are read from `~/.rogue-env` (or `/etc/rogue/env` for MDM-managed installs):
 
-| Variable               | Required | Purpose                                                          |
-|------------------------|----------|------------------------------------------------------------------|
-| `ROGUE_API_KEY`        | Yes      | API key from <https://app.rogue.security/settings/api-keys>.     |
-| `ROGUE_ACTOR_EMAIL`    | No       | Identifies the developer in the AIDR dashboard.                  |
-| `ROGUE_ACTOR_NAME`     | No       | Display name in the dashboard.                                   |
-| `ROGUE_BASE_URL`       | No       | Override the API endpoint (default `https://api.rogue.security`). |
-| `ROGUE_AUTO_UPDATE`    | No       | Set `0` to disable the background updater (one-line install only). |
-| `ROGUE_PLUGIN_VERSION` | No       | Pin to a specific release (e.g. `v1.0.0`).                       |
+
+| Variable               | Required | Purpose                                                                                                    |
+| ---------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `ROGUE_API_KEY`        | Yes      | API key from [https://app.rogue.security/settings/api-keys](https://app.rogue.security/settings/api-keys). |
+| `ROGUE_ACTOR_EMAIL`    | No       | Identifies the developer in the AIDR dashboard.                                                            |
+| `ROGUE_ACTOR_NAME`     | No       | Display name in the dashboard.                                                                             |
+| `ROGUE_BASE_URL`       | No       | Override the API endpoint (default `https://api.rogue.security`).                                          |
+| `ROGUE_AUTO_UPDATE`    | No       | Set `0` to disable the background updater (one-line install only).                                         |
+| `ROGUE_PLUGIN_VERSION` | No       | Pin to a specific release (e.g. `v1.0.0`).                                                                 |
+
 
 Both file locations use mode 600. The system-wide `/etc/rogue/env` takes precedence when present.
 
@@ -112,7 +117,7 @@ Both file locations use mode 600. The system-wide `/etc/rogue/env` takes precede
 
 1. Fully restart Cursor.
 2. Run `/rogue:status` inside Cursor — you should see `API: reachable` and a non-zero hook count.
-3. Send any prompt in agent mode. Within a few seconds it should appear at <https://app.rogue.security/aidr>.
+3. Send any prompt in agent mode. Within a few seconds it should appear at [https://app.rogue.security/aidr](https://app.rogue.security/aidr).
 
 ---
 
@@ -125,19 +130,21 @@ Yes — via a Cursor Team Marketplace with the `rogue` plugin set to **Required*
 No. Rogue's plugin is fail-open by design: missing API key, network failure, non-200 responses, or malformed bodies all result in no detection and no block. Developers are never stopped by Rogue infrastructure issues. Policy decisions only apply when the API responds successfully.
 
 **How does the plugin update itself?**
+
 - **Marketplace install:** Cursor manages updates from the marketplace repository automatically.
 - **One-line install:** the plugin runs an auto-updater on each Cursor `sessionStart`, rate-limited to once per 24h. Disable it by setting `ROGUE_AUTO_UPDATE=0`, or pin a version with `ROGUE_PLUGIN_VERSION=v1.0.0`.
 
 **What gets stored on the developer's machine?**
+
 - Plugin files (managed by Cursor for marketplace installs, or `~/.cursor/plugins/local/rogue/` for the one-line install).
 - Credentials at `~/.rogue-env` or `/etc/rogue/env` (mode 600).
 
 **Is the source code reviewable before deployment?**
-Yes — the plugin is an open repository at <https://github.com/qualifire-dev/rogue-plugin-cursor>. Security teams typically review it before importing it as a team marketplace.
+Yes — the plugin is an open repository at [https://github.com/qualifire-dev/rogue-plugin-cursor](https://github.com/qualifire-dev/rogue-plugin-cursor). Security teams typically review it before importing it as a team marketplace.
 
 **Is there a way to mark a detection as a false positive?**
 Yes — prepend `rgx!` to any prompt. That request is allowed through and the previous detection is flagged as a false positive in your AIDR dashboard. Per-prompt only.
 
 ---
 
-Questions or rollout help: <support@rogue.security>.
+Questions or rollout help: [support@rogue.security](mailto:support@rogue.security).
