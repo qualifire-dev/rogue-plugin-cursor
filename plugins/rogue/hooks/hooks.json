@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "( nohup bash \"${CURSOR_PLUGIN_ROOT}/scripts/auto-update.sh\" >/dev/null 2>&1 & )",
+        "timeout": 2
+      },
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" sessionStart",
+        "timeout": 12
+      }
+    ],
+    "sessionEnd": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" sessionEnd", "timeout": 12 }
+    ],
+    "beforeSubmitPrompt": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" beforeSubmitPrompt", "timeout": 12, "failClosed": false }
+    ],
+    "preToolUse": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" preToolUse", "timeout": 12, "failClosed": false }
+    ],
+    "postToolUse": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" postToolUse", "timeout": 12 }
+    ],
+    "postToolUseFailure": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" postToolUseFailure", "timeout": 12 }
+    ],
+    "beforeShellExecution": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" beforeShellExecution", "timeout": 12, "failClosed": false }
+    ],
+    "afterShellExecution": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" afterShellExecution", "timeout": 12 }
+    ],
+    "beforeMCPExecution": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" beforeMCPExecution", "timeout": 12, "failClosed": false }
+    ],
+    "afterMCPExecution": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" afterMCPExecution", "timeout": 12 }
+    ],
+    "beforeReadFile": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" beforeReadFile", "timeout": 12, "failClosed": false }
+    ],
+    "afterFileEdit": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" afterFileEdit", "timeout": 12 }
+    ],
+    "afterAgentResponse": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" afterAgentResponse", "timeout": 12 }
+    ],
+    "afterAgentThought": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" afterAgentThought", "timeout": 12 }
+    ],
+    "subagentStart": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" subagentStart", "timeout": 12 }
+    ],
+    "subagentStop": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" subagentStop", "timeout": 12 }
+    ],
+    "stop": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" stop", "timeout": 12 }
+    ],
+    "preCompact": [
+      { "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/rogue-hook.py\" preCompact", "timeout": 12 }
+    ]
+  }
+}
