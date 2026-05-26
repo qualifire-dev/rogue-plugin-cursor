@@ -49,13 +49,18 @@ done
 
 case "$(uname -s)" in
   Darwin) OS=darwin ;;
-  Linux)  err "Linux support is not shipped yet" ;;
+  Linux)  OS=linux ;;
   *)      err "Unsupported platform: $(uname -s)" ;;
 esac
 log "Platform: $OS"
 
-command -v python3 >/dev/null 2>&1 || err "python3 required (xcode-select --install on macOS)"
-command -v curl    >/dev/null 2>&1 || err "curl required"
+if ! command -v python3 >/dev/null 2>&1; then
+  case "$OS" in
+    darwin) err "python3 required (xcode-select --install on macOS)" ;;
+    linux)  err "python3 required (e.g. 'apt install python3' or 'dnf install python3')" ;;
+  esac
+fi
+command -v curl >/dev/null 2>&1 || err "curl required"
 
 prompt_tty() {
   local var="$1" text="$2" secret="${3:-}"

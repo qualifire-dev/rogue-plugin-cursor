@@ -1,15 +1,46 @@
-name: release
+name: Release
+
 on:
   push:
-    tags: ['v*']
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (must already exist, e.g. v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
 jobs:
-  build:
-    runs-on: macos-latest
-    permissions:
-      contents: write
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
-      - run: bash scripts/build-release.sh
-      - uses: softprops/action-gh-release@v2
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          files: dist/rogue-plugin-cursor-darwin.tar.gz
+          ref: ${{ env.TAG }}
+
+      - name: Build per-OS tarballs
+        run: bash scripts/build-release.sh
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists — uploading assets"
+            gh release upload "$TAG" dist/*.tar.gz --clobber
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --generate-notes \
+              dist/*.tar.gz
+          fi
