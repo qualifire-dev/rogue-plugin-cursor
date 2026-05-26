@@ -1,0 +1,15 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/build-release.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/rogue-plugin-cursor-darwin.tar.gz
