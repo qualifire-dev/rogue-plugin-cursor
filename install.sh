@@ -114,7 +114,7 @@ else
     || err "Download failed from $URL"
   mkdir -p "$TMPDIR_LOCAL/extract"
   tar -xzf "$TMPDIR_LOCAL/p.tar.gz" -C "$TMPDIR_LOCAL/extract"
-  SRC_DIR=$(find "$TMPDIR_LOCAL/extract" -mindepth 1 -maxdepth 1 -type d | head -1)
+  SRC_DIR="$TMPDIR_LOCAL/extract"
 fi
 
 PLUGIN_SRC="$SRC_DIR/plugins/${PLUGIN_NAME}"
