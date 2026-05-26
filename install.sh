@@ -127,28 +127,6 @@ mkdir -p "$PLUGIN_INSTALL_DIR"
 cp -R "$PLUGIN_SRC/." "$PLUGIN_INSTALL_DIR/"
 log "Installed → $PLUGIN_INSTALL_DIR"
 
-# If Cursor doesn't expose CURSOR_PLUGIN_ROOT at hook runtime (verified in
-# Task 5.1), templatize hooks.json to the absolute install path.
-if [ "${ROGUE_TEMPLATE_HOOKS:-1}" = "1" ]; then
-  HOOKS_FILE="$PLUGIN_INSTALL_DIR/hooks/hooks.json"
-  if [ -f "$HOOKS_FILE" ]; then
-    ROGUE_HOOKS_PATH="$HOOKS_FILE" ROGUE_INSTALL_ROOT="$PLUGIN_INSTALL_DIR" python3 - <<'PY'
-import json, os
-p = os.environ["ROGUE_HOOKS_PATH"]
-root = os.environ["ROGUE_INSTALL_ROOT"]
-with open(p) as f:
-    d = json.load(f)
-for ev, entries in d.get("hooks", {}).items():
-    for e in entries:
-        if "command" in e:
-            e["command"] = e["command"].replace("${CURSOR_PLUGIN_ROOT}", root)
-with open(p, "w") as f:
-    json.dump(d, f, indent=2)
-PY
-    log "Templated hook paths to $PLUGIN_INSTALL_DIR"
-  fi
-fi
-
 cat <<EOF
 
 ✓ Rogue Security (Cursor) installed.

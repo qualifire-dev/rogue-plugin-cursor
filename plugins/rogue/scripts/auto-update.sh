@@ -31,7 +31,8 @@ fi
 touch "$CACHE" 2>/dev/null
 
 REPO="${ROGUE_PLUGIN_REPO:-qualifire-dev/rogue-plugin-cursor}"
-PLUGIN_JSON="${CURSOR_PLUGIN_ROOT:-}/.cursor-plugin/plugin.json"
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PLUGIN_JSON="$PLUGIN_ROOT/.cursor-plugin/plugin.json"
 if [ ! -f "$PLUGIN_JSON" ]; then echo "no plugin.json at $PLUGIN_JSON"; exit 0; fi
 
 INSTALLED=$(python3 -c 'import json,sys;print(json.load(sys.stdin).get("version",""))' < "$PLUGIN_JSON" 2>/dev/null || echo "")

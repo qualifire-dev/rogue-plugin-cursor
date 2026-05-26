@@ -1,4 +1,5 @@
 ---
+name: status
 description: Check Rogue Security AIDR connection, active rulesets, and configuration
 ---
 

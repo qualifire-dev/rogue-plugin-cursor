@@ -22,6 +22,7 @@ Fail-open: missing API key, network failure, non-200, empty body, or
 malformed JSON all result in `{}` on stdout — Cursor must never block
 because Rogue infrastructure is unavailable.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,13 +34,16 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
 
 DEFAULT_BASE_URL = "https://api.rogue.security"
 TIMEOUT_SECONDS = 10
 
 _CRED_FILES = ("/etc/rogue/env", os.path.expanduser("~/.rogue-env"))
 _FORWARDED_ENV_VARS = (
-    "ROGUE_API_KEY", "ROGUE_ACTOR_EMAIL", "ROGUE_ACTOR_NAME",
+    "ROGUE_API_KEY",
+    "ROGUE_ACTOR_EMAIL",
+    "ROGUE_ACTOR_NAME",
     "ROGUE_BASE_URL",
 )
 
@@ -74,15 +78,25 @@ def _git_config(key: str) -> str:
     try:
         return subprocess.run(
             ["git", "config", "--global", key],
-            capture_output=True, text=True, timeout=2
+            capture_output=True,
+            text=True,
+            timeout=2,
         ).stdout.strip()
     except Exception:
         return ""
 
 
 def _resolve_actor(creds: dict) -> tuple[str, str]:
-    email = creds.get("ROGUE_ACTOR_EMAIL") or _git_config("user.email") or socket.gethostname()
-    name = creds.get("ROGUE_ACTOR_NAME") or _git_config("user.name") or os.environ.get("USER", "")
+    email = (
+        creds.get("ROGUE_ACTOR_EMAIL")
+        or _git_config("user.email")
+        or socket.gethostname()
+    )
+    name = (
+        creds.get("ROGUE_ACTOR_NAME")
+        or _git_config("user.name")
+        or os.environ.get("USER", "")
+    )
     return email, name
 
 
@@ -91,8 +105,13 @@ def _post(url: str, headers: dict, body: bytes) -> bytes:
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as resp:
             return resp.read() or b""
-    except (urllib.error.URLError, urllib.error.HTTPError, socket.timeout,
-            ConnectionError, OSError):
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        socket.timeout,
+        ConnectionError,
+        OSError,
+    ):
         return b""
 
 
@@ -113,6 +132,12 @@ def _emit_bytes(data: bytes) -> None:
 
 
 def main(argv: list[str]) -> int:
+    with open("/tmp/rogue-cursor-plugin-test.txt", "a") as f:
+        f.write("=" * 40 + "\n")
+        f.write(datetime.now().isoformat() + "\n")
+        f.write(json.dumps(argv) + "\n")
+        f.write("\n")
+
     if len(argv) < 2:
         sys.stdout.write("{}")
         sys.stdout.flush()
@@ -123,11 +148,14 @@ def main(argv: list[str]) -> int:
     api_key = creds.get("ROGUE_API_KEY", "")
     if not api_key:
         if event == "sessionStart":
-            sys.stdout.write(json.dumps({
-                "additional_context":
-                    "Rogue Security plugin is installed but not configured. "
-                    "Run /rogue:setup to connect your API key."
-            }))
+            sys.stdout.write(
+                json.dumps(
+                    {
+                        "additional_context": "Rogue Security plugin is installed but not configured. "
+                        "Run /rogue:setup to connect your API key."
+                    }
+                )
+            )
         else:
             sys.stdout.write("{}")
         sys.stdout.flush()
@@ -142,12 +170,12 @@ def main(argv: list[str]) -> int:
         payload = "{}"
 
     headers = {
-        "Content-Type":         "application/json",
-        "x-rogue-api-key":      api_key,
-        "x-rogue-event":        event,                 # verbatim, no translation
-        "x-rogue-actor-email":  actor_email,
-        "x-rogue-actor-name":   actor_name,
-        "x-rogue-source":       "cursor",
+        "Content-Type": "application/json",
+        "x-rogue-api-key": api_key,
+        "x-rogue-event": event,
+        "x-rogue-actor-email": actor_email,
+        "x-rogue-actor-name": actor_name,
+        "x-rogue-source": "cursor",
     }
 
     url = f"{base_url}/api/v1/hooks/cursor"

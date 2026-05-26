@@ -1,4 +1,5 @@
 ---
+name: setup
 description: Set up Rogue Security AIDR integration — configure API key, detect identity, verify connection
 ---
 
