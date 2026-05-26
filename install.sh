@@ -2,7 +2,7 @@
 set -euo pipefail
 # Rogue Security — one-line installer for Cursor.
 #   curl -fsSL https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.sh | bash
-# With credentials:
+# With credentials (env, flags, or existing ~/.rogue-env / /etc/rogue/env):
 #   curl -fsSL .../install.sh | ROGUE_API_KEY=rsk_xxx ROGUE_ACTOR_EMAIL=you@co.com ROGUE_ACTOR_NAME='Your Name' bash
 # Flags:
 #   --api-key KEY --email EMAIL --name NAME --api-url URL
@@ -76,6 +76,25 @@ prompt_tty() {
   printf -v "$var" '%s' "$value"
 }
 
+# Fill unset vars from MDM / per-user env files (same order as rogue-hook.py: later wins).
+load_existing_creds() {
+  local f
+  for f in /etc/rogue/env "$HOME/.rogue-env"; do
+    if [ -r "$f" ]; then
+      # shellcheck disable=SC1090
+      . "$f"
+      log "Read credentials from $f"
+    fi
+  done
+  [ -z "$API_KEY" ]     && API_KEY="${ROGUE_API_KEY:-}"
+  [ -z "$ACTOR_EMAIL" ] && ACTOR_EMAIL="${ROGUE_ACTOR_EMAIL:-}"
+  [ -z "$ACTOR_NAME" ]  && ACTOR_NAME="${ROGUE_ACTOR_NAME:-}"
+  if [ "$API_URL" = "$ROGUE_API_URL_DEFAULT" ] && [ -n "${ROGUE_BASE_URL:-}" ]; then
+    API_URL="$ROGUE_BASE_URL"
+  fi
+}
+
+load_existing_creds
 [ -n "$API_KEY" ] || prompt_tty API_KEY "Rogue API key (rsk_...)" secret
 
 if [ -z "$ACTOR_EMAIL" ] && command -v git >/dev/null 2>&1; then ACTOR_EMAIL=$(git config --global user.email 2>/dev/null || true); fi
