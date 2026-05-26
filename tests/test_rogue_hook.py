@@ -101,3 +101,59 @@ def test_unconfigured_other_event_emits_empty(mod, monkeypatch, capsys):
 def test_no_event_arg_emits_empty(mod, capsys):
     mod.main(["rogue-hook.py"])
     assert capsys.readouterr().out == "{}"
+
+
+# ─── actor resolution fallback chain ───────────────────────────────────
+
+def test_resolve_actor_prefers_explicit_creds(mod, monkeypatch):
+    monkeypatch.setattr(mod, "_git_config", lambda k: "git-" + k)
+    monkeypatch.setattr(mod, "_whoami", lambda: "whoami-user")
+    monkeypatch.setattr(mod, "_hostname", lambda: "whoami-host")
+    email, name = mod._resolve_actor(
+        {"ROGUE_ACTOR_EMAIL": "you@example.com", "ROGUE_ACTOR_NAME": "You"}
+    )
+    assert email == "you@example.com"
+    assert name == "You"
+
+
+def test_resolve_actor_falls_back_to_git_config(mod, monkeypatch):
+    monkeypatch.setattr(
+        mod, "_git_config", lambda k: {"user.email": "g@e.com", "user.name": "Gname"}[k]
+    )
+    monkeypatch.setattr(mod, "_whoami", lambda: "whoami-user")
+    monkeypatch.setattr(mod, "_hostname", lambda: "whoami-host")
+    email, name = mod._resolve_actor({})
+    assert email == "g@e.com"
+    assert name == "Gname"
+
+
+def test_resolve_actor_falls_back_to_whoami_hostname(mod, monkeypatch):
+    monkeypatch.setattr(mod, "_git_config", lambda k: "")
+    monkeypatch.setattr(mod, "_whoami", lambda: "alice")
+    monkeypatch.setattr(mod, "_hostname", lambda: "laptop.local")
+    email, name = mod._resolve_actor({})
+    assert email == "alice@laptop.local"
+    assert name == "alice"
+
+
+def test_resolve_actor_handles_missing_hostname(mod, monkeypatch):
+    monkeypatch.setattr(mod, "_git_config", lambda k: "")
+    monkeypatch.setattr(mod, "_whoami", lambda: "alice")
+    monkeypatch.setattr(mod, "_hostname", lambda: "")
+    email, name = mod._resolve_actor({})
+    assert email == "alice"
+    assert name == "alice"
+
+
+# ─── bundled env file (compiled plugin) ─────────────────────────────────
+
+def test_bundled_env_file_loads_under_plugin_root(mod, tmp_path, monkeypatch):
+    plugin_root = tmp_path / "rogue"
+    plugin_root.mkdir()
+    (plugin_root / "env").write_text("export ROGUE_API_KEY=rsk_bundled\n")
+    monkeypatch.setattr(
+        mod, "_CRED_FILES", (str(plugin_root / "env"),)
+    )
+    monkeypatch.delenv("ROGUE_API_KEY", raising=False)
+    creds = mod._load_creds()
+    assert creds["ROGUE_API_KEY"] == "rsk_bundled"

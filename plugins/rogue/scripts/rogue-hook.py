@@ -11,9 +11,10 @@ stdout. The server returns the exact Cursor-native output JSON for that
 event (e.g. {permission, user_message} for preToolUse, {continue,
 user_message} for beforeSubmitPrompt) — the dispatcher does not reshape.
 
-Credential resolution order (later wins, then process env wins over both):
-    1. /etc/rogue/env       (MDM-provisioned)
-    2. ~/.rogue-env         (user / installer-written)
+Credential resolution order (later wins, then process env wins over all):
+    1. ${CURSOR_PLUGIN_ROOT}/env  (baked into a compiled customer plugin)
+    2. /etc/rogue/env             (MDM-provisioned)
+    3. ~/.rogue-env               (user / installer-written)
 
 All policy decisions (allow/ask/deny) are made by the server based on its
 own configuration. The dispatcher forwards no client-side preference.
@@ -39,7 +40,21 @@ from datetime import datetime
 DEFAULT_BASE_URL = "https://api.rogue.security"
 TIMEOUT_SECONDS = 10
 
-_CRED_FILES = ("/etc/rogue/env", os.path.expanduser("~/.rogue-env"))
+def _default_cred_files() -> tuple[str, ...]:
+    # The compiled-plugin env file lives at the plugin root. Prefer
+    # CURSOR_PLUGIN_ROOT (set by Cursor when invoking hooks); fall back to
+    # script-relative resolution for direct invocations.
+    plugin_root = os.environ.get("CURSOR_PLUGIN_ROOT") or os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))
+    )
+    return (
+        os.path.join(plugin_root, "env"),
+        "/etc/rogue/env",
+        os.path.expanduser("~/.rogue-env"),
+    )
+
+
+_CRED_FILES = _default_cred_files()
 _FORWARDED_ENV_VARS = (
     "ROGUE_API_KEY",
     "ROGUE_ACTOR_EMAIL",
@@ -74,29 +89,47 @@ def _load_creds() -> dict:
     return out
 
 
-def _git_config(key: str) -> str:
+def _run_cmd(cmd: list[str]) -> str:
     try:
         return subprocess.run(
-            ["git", "config", "--global", key],
-            capture_output=True,
-            text=True,
-            timeout=2,
+            cmd, capture_output=True, text=True, timeout=2
         ).stdout.strip()
     except Exception:
         return ""
 
 
-def _resolve_actor(creds: dict) -> tuple[str, str]:
-    email = (
-        creds.get("ROGUE_ACTOR_EMAIL")
-        or _git_config("user.email")
-        or socket.gethostname()
+def _git_config(key: str) -> str:
+    return _run_cmd(["git", "config", "--global", key])
+
+
+def _whoami() -> str:
+    """Username — $USER/$USERNAME first, then the `whoami` command."""
+    return (
+        os.environ.get("USER")
+        or os.environ.get("USERNAME")
+        or _run_cmd(["whoami"])
     )
+
+
+def _hostname() -> str:
+    """Hostname — socket.gethostname() first, then the `hostname` command."""
+    return socket.gethostname() or _run_cmd(["hostname"])
+
+
+def _resolve_actor(creds: dict) -> tuple[str, str]:
+    """Fallback chain: explicit creds → git config → whoami/hostname."""
     name = (
         creds.get("ROGUE_ACTOR_NAME")
         or _git_config("user.name")
-        or os.environ.get("USER", "")
+        or _whoami()
     )
+    email = creds.get("ROGUE_ACTOR_EMAIL") or _git_config("user.email")
+    if not email:
+        user, host = _whoami(), _hostname()
+        if user and host:
+            email = f"{user}@{host}"
+        else:
+            email = user or host
     return email, name
 
 

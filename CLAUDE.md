@@ -16,10 +16,11 @@ Cursor loads at session start. The only "build" is `scripts/build-release.sh`.
 - `.cursor-plugin/marketplace.json` — marketplace manifest.
 - `plugins/rogue/.cursor-plugin/plugin.json` — plugin manifest. **`version` is the source of truth** for release tags.
 - `plugins/rogue/hooks/hooks.json` — all 18 lifecycle hooks. Every entry points at the same Python dispatcher.
-- `plugins/rogue/scripts/rogue-hook.py` — the dispatcher. Pass-through to the server. Unit-tested (`tests/test_rogue_hook.py`) for the small bits it does locally (env parsing, JSON validation, unconfigured hint); HTTP round-trip is smoke-tested.
+- `plugins/rogue/scripts/rogue-hook.py` — the dispatcher. Pass-through to the server. Unit-tested (`tests/test_rogue_hook.py`) for the small bits it does locally (env parsing, actor resolution, JSON validation, unconfigured hint); HTTP round-trip is smoke-tested.
 - `plugins/rogue/scripts/setup.sh` — writes `~/.rogue-env` (mode 600).
 - `plugins/rogue/scripts/auto-update.sh` — background updater fired from sessionStart. Rate-limited to once per 24h via `~/.rogue/.auto-update-check-cursor`.
 - `plugins/rogue/commands/{setup,status}.md` — slash commands.
+- `scripts/compile-customer-plugin.sh` — builds a flat tarball with `ROGUE_API_KEY` baked into `<plugin_root>/env`. Used to ship an MDM-free install option. Actor identity is NOT baked in — it's resolved per-user at hook-fire time via `_resolve_actor()`.
 
 ## The hook pattern
 
@@ -44,8 +45,8 @@ Invariants when editing hooks:
 
 The dispatcher is intentionally simple:
 
-- `_load_creds()` — env file + process env resolution.
-- `_resolve_actor()` — actor email/name with git/hostname/whoami fallbacks.
+- `_load_creds()` — env file + process env resolution. Searches `${CURSOR_PLUGIN_ROOT}/env` (compiled plugin), `/etc/rogue/env` (MDM), `~/.rogue-env` (per-user); later wins, process env wins over all.
+- `_resolve_actor()` — actor email/name. Order: explicit `ROGUE_ACTOR_*` → `git config` → `whoami`/`hostname` commands (last-resort, used when git isn't installed).
 - `_post()` — HTTP POST, returns raw bytes (or `b""` on any error).
 - `_emit_bytes()` — JSON-validate the response and relay; emit `{}` on empty or malformed.
 - `main()` — argv → load creds → POST → emit.

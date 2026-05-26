@@ -44,6 +44,9 @@ Each install needs `ROGUE_API_KEY` (and optionally `ROGUE_ACTOR_EMAIL` and `ROGU
 - **MDM-managed system env file** (*recommended for Enterprise*) — push `/etc/rogue/env` (mode 600) via Jamf, Intune, or Kandji. No developer action required; works the moment Cursor launches.
 - **Per-user setup command** — developers run `/rogue:setup` inside Cursor once after install, which writes `~/.rogue-env`. Works well for smaller teams.
 - **MDM provisioning script** — push a script that runs the one-line installer in `--non-interactive` mode with `ROGUE_API_KEY` pre-set.
+- **Pre-compiled plugin tarball with the key baked in** — if you'd rather not run MDM at all, contact us and we'll ship you a tarball produced by [`scripts/compile-customer-plugin.sh`](../scripts/compile-customer-plugin.sh). The key sits in an `env` file at the plugin root and is picked up automatically.
+
+> **About the API key**: the Rogue API key is an **attribution token**, not a credential in the usual sense. It can only POST hook events to `api.rogue.security` — it cannot read data, fetch configuration, or change anything on your org. Treat a leaked key as a noise-attribution problem (rotate it in the dashboard and re-ship), not a data-exfiltration one.
 
 API keys are issued at <https://app.rogue.security/settings/api-keys>.
 
