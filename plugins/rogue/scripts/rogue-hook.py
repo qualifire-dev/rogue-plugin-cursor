@@ -40,6 +40,7 @@ from datetime import datetime
 DEFAULT_BASE_URL = "https://api.rogue.security"
 TIMEOUT_SECONDS = 10
 
+
 def _default_cred_files() -> tuple[str, ...]:
     # The compiled-plugin env file lives at the plugin root. Prefer
     # CURSOR_PLUGIN_ROOT (set by Cursor when invoking hooks); fall back to
@@ -104,11 +105,7 @@ def _git_config(key: str) -> str:
 
 def _whoami() -> str:
     """Username — $USER/$USERNAME first, then the `whoami` command."""
-    return (
-        os.environ.get("USER")
-        or os.environ.get("USERNAME")
-        or _run_cmd(["whoami"])
-    )
+    return os.environ.get("USER") or os.environ.get("USERNAME") or _run_cmd(["whoami"])
 
 
 def _hostname() -> str:
@@ -118,11 +115,7 @@ def _hostname() -> str:
 
 def _resolve_actor(creds: dict) -> tuple[str, str]:
     """Fallback chain: explicit creds → git config → whoami/hostname."""
-    name = (
-        creds.get("ROGUE_ACTOR_NAME")
-        or _git_config("user.name")
-        or _whoami()
-    )
+    name = creds.get("ROGUE_ACTOR_NAME") or _git_config("user.name") or _whoami()
     email = creds.get("ROGUE_ACTOR_EMAIL") or _git_config("user.email")
     if not email:
         user, host = _whoami(), _hostname()
@@ -165,12 +158,6 @@ def _emit_bytes(data: bytes) -> None:
 
 
 def main(argv: list[str]) -> int:
-    with open("/tmp/rogue-cursor-plugin-test.txt", "a") as f:
-        f.write("=" * 40 + "\n")
-        f.write(datetime.now().isoformat() + "\n")
-        f.write(json.dumps(argv) + "\n")
-        f.write("\n")
-
     if len(argv) < 2:
         sys.stdout.write("{}")
         sys.stdout.flush()
