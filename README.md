@@ -7,10 +7,22 @@ operations before they reach production.
 
 ## Install
 
-One-line installer (recommended):
+**macOS / Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.sh | bash
+```
+
+**Windows** (PowerShell 5.1+, run as your normal user):
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.ps1 | iex
+```
+
+Pass credentials via environment variables before the one-liner when running non-interactively:
+
+```powershell
+$env:ROGUE_API_KEY='rsk_xxx'; $env:ROGUE_ACTOR_EMAIL='you@co.com'; iwr -useb https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.ps1 | iex
 ```
 
 The installer drops the plugin into `~/.cursor/plugins/local/rogue/`, writes
@@ -82,7 +94,8 @@ detection as a false positive in your dashboard. Per-prompt only.
 ## Requirements
 
 - Cursor v2026.x with plugin support
-- `python3` and `curl` on PATH
+- **macOS / Linux:** `python3` and `curl` on PATH
+- **Windows:** Python 3 on PATH (`winget install Python.Python.3`); `tar` (ships with Windows 10 1803+)
 
 ## License
 

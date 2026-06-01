@@ -47,20 +47,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-case "$(uname -s)" in
-  Darwin) OS=darwin ;;
-  Linux)  OS=linux ;;
-  *)      err "Unsupported platform: $(uname -s)" ;;
-esac
-log "Platform: $OS"
-
-if ! command -v python3 >/dev/null 2>&1; then
-  case "$OS" in
-    darwin) err "python3 required (xcode-select --install on macOS)" ;;
-    linux)  err "python3 required (e.g. 'apt install python3' or 'dnf install python3')" ;;
-  esac
-fi
-command -v curl >/dev/null 2>&1 || err "curl required"
+command -v python3 >/dev/null 2>&1 || err "python3 required"
+command -v curl    >/dev/null 2>&1 || err "curl required"
 
 prompt_tty() {
   local var="$1" text="$2" secret="${3:-}"
@@ -130,7 +118,7 @@ if [ -n "$LOCAL_PATH" ]; then
     || err "--local path missing plugin manifest"
   SRC_DIR="$LOCAL_PATH"
 else
-  ASSET="rogue-plugin-cursor-${OS}.tar.gz"
+  ASSET="rogue-plugin-cursor.tar.gz"
   URL="https://github.com/${PLUGIN_REPO}/releases/latest/download/${ASSET}"
   [ -n "$PLUGIN_VERSION_PIN" ] && URL="https://github.com/${PLUGIN_REPO}/releases/download/${PLUGIN_VERSION_PIN}/${ASSET}"
   log "Downloading: $URL"
