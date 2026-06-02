@@ -2,20 +2,25 @@
 #
 # Cross-platform sibling of hook.sh. hooks.json loads this WITHOUT -File so the
 # PowerShell ExecutionPolicy never applies (running a scriptblock built from a
-# string is not subject to policy, unlike invoking a .ps1 on disk):
+# string is not subject to policy, unlike invoking a .ps1 on disk — this also
+# survives a GPO-enforced policy, which -ExecutionPolicy Bypass does not):
 #
 #   powershell -NoProfile -NonInteractive -Command \
-#     "& ([scriptblock]::Create((Get-Content -Raw -LiteralPath 'scripts/hook.ps1'))) <event>"
+#     "& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) <event>"
 #
-# The one-liner has no `$` and no backticks, so it survives Cursor's hook
-# bootstrap intact whether that bootstrap is PowerShell or (Git) Bash.
+# Cursor substitutes $env:CURSOR_PLUGIN_ROOT (the plugin root) into the command
+# before PowerShell parses it; the single quotes make the injected absolute path
+# a string literal. Cursor runs this entry from a cwd that is NOT the plugin
+# root, so a relative path would not resolve here.
 #
 # This script OWNS native Windows. It stands down on non-Windows (pwsh on
-# macOS/Linux) because hook.sh runs there. It does NOT need the Git Bash guard
-# that hook.sh has — `powershell` simply doesn't resolve off Windows.
+# macOS/Linux) because hook.sh runs there.
 #
 # Fail-open everywhere: missing API key, network error, non-200, empty body, or
 # non-JSON response all yield `{}` on stdout, exit 0.
+#
+# Set ROGUE_DEBUG=1 (process/user env var) to emit diagnostics to stderr;
+# Cursor shows stderr in its hook log without treating it as the response.
 #
 # Credential resolution (later file wins; process env wins over all), the
 # Windows analogue of hook.sh's search:
@@ -28,25 +33,36 @@ param([string]$EventName = '')
 $ErrorActionPreference = 'SilentlyContinue'
 
 function Write-Raw { param([string]$Text) [Console]::Out.Write($Text) }
+function Dbg { param([string]$Msg) if ($env:ROGUE_DEBUG) { [Console]::Error.WriteLine("[rogue] $Msg") } }
 
 function Emit-Json {
     param([string]$Data)
     if (-not $Data) { Write-Raw '{}'; return }
     try { $null = $Data | ConvertFrom-Json -ErrorAction Stop; Write-Raw $Data }
-    catch { Write-Raw '{}' }
+    catch { Dbg "response is not JSON -> {}"; Write-Raw '{}' }
 }
+
+# Windows PowerShell 5.1 may negotiate only TLS 1.0/1.1 by default, which
+# modern HTTPS endpoints reject ("Could not create SSL/TLS secure channel").
+# Add TLS 1.2 without clobbering any protocols already enabled.
+try {
+    [Net.ServicePointManager]::SecurityProtocol = `
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+} catch {}
 
 # ── stand down on non-Windows (pwsh on macOS/Linux) ────────────────────────
 # $IsWindows exists only in PowerShell 6+. In 5.1 (Windows-only) it is $null,
 # so guard on the version to avoid a false stand-down there.
 if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) { Write-Raw '{}'; exit 0 }
 
-if (-not $EventName) { Write-Raw '{}'; exit 0 }
+if (-not $EventName) { Dbg "no event name -> {}"; Write-Raw '{}'; exit 0 }
+Dbg "event=$EventName"
 
 # ── credential resolution (later file wins; process env wins over all) ─────
 $creds = @{}
 $pluginRoot = $env:CURSOR_PLUGIN_ROOT
 if (-not $pluginRoot) { try { $pluginRoot = (Get-Location).Path } catch { $pluginRoot = '.' } }
+Dbg "pluginRoot=$pluginRoot"
 
 $credFiles = @(
     (Join-Path $pluginRoot 'env'),
@@ -55,7 +71,8 @@ $credFiles = @(
 )
 foreach ($f in $credFiles) {
     if (-not $f) { continue }
-    if (-not (Test-Path -LiteralPath $f)) { continue }
+    if (-not (Test-Path -LiteralPath $f)) { Dbg "cred file absent: $f"; continue }
+    Dbg "cred file found: $f"
     foreach ($line in (Get-Content -LiteralPath $f)) {
         if ($line -match '^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.+)$') {
             $k = $Matches[1]
@@ -72,6 +89,7 @@ foreach ($k in 'ROGUE_API_KEY','ROGUE_ACTOR_EMAIL','ROGUE_ACTOR_NAME','ROGUE_BAS
 
 $apiKey = $creds['ROGUE_API_KEY']
 if (-not $apiKey) {
+    Dbg "no API key after cred resolution -> fail-open"
     if ($EventName -eq 'sessionStart') {
         Write-Raw '{"additional_context": "Rogue Security plugin is installed but not configured. Run /rogue:setup to connect your API key."}'
     } else {
@@ -79,6 +97,8 @@ if (-not $apiKey) {
     }
     exit 0
 }
+$keyTail = if ($apiKey.Length -ge 4) { $apiKey.Substring($apiKey.Length - 4) } else { '****' }
+Dbg "apiKey present (tail $keyTail)"
 
 $baseUrl = $creds['ROGUE_BASE_URL']
 if (-not $baseUrl) { $baseUrl = 'https://api.rogue.security' }
@@ -110,13 +130,19 @@ $headers = @{
     'x-rogue-source'      = 'cursor'
 }
 
+$url = "$baseUrl/api/v1/hooks/cursor"
+Dbg "POST $url actor=$actorEmail"
 $resp = ''
 try {
-    $r = Invoke-WebRequest -Uri "$baseUrl/api/v1/hooks/cursor" -Method Post `
+    $r = Invoke-WebRequest -Uri $url -Method Post `
         -Headers $headers -ContentType 'application/json' -Body $payload `
         -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+    Dbg "HTTP $($r.StatusCode), body length $($r.Content.Length)"
     if ($r.StatusCode -eq 200) { $resp = [string]$r.Content }
-} catch { $resp = '' }
+} catch {
+    Dbg "POST failed: $($_.Exception.Message)"
+    $resp = ''
+}
 
 Emit-Json $resp
 exit 0

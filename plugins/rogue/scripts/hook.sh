@@ -44,12 +44,16 @@ emit() {
   esac
 }
 
+# Diagnostics to stderr when ROGUE_DEBUG is set (Cursor logs stderr separately).
+dbg() { [ -n "${ROGUE_DEBUG:-}" ] && printf '[rogue] %s\n' "$*" >&2; return 0; }
+
 # ── Git Bash stand-down: let hook.ps1 own native Windows ───────────────────
 case "$(uname -s 2>/dev/null)" in
-  MINGW*|MSYS*|CYGWIN*) printf '{}'; exit 0 ;;
+  MINGW*|MSYS*|CYGWIN*) dbg "Git Bash (uname) -> stand down"; printf '{}'; exit 0 ;;
 esac
 
 [ -n "$event" ] || { printf '{}'; exit 0; }
+dbg "event=$event"
 
 # ── credential resolution (later file wins; process env wins over all) ─────
 _penv_ROGUE_API_KEY="${ROGUE_API_KEY:-}"
@@ -65,7 +69,8 @@ fi
 # Env files are bash-quoted (`export KEY=value`, written via printf %q), so
 # sourcing them is correct and matches auto-update.sh's existing approach.
 for _f in "$PLUGIN_ROOT/env" /etc/rogue/env "$HOME/.rogue-env"; do
-  [ -n "$_f" ] && [ -r "$_f" ] && . "$_f" 2>/dev/null
+  if [ -n "$_f" ] && [ -r "$_f" ]; then dbg "cred file found: $_f"; . "$_f" 2>/dev/null
+  else dbg "cred file absent: $_f"; fi
 done
 
 # process env wins over file values
@@ -76,6 +81,7 @@ done
 
 API_KEY="${ROGUE_API_KEY:-}"
 if [ -z "$API_KEY" ]; then
+  dbg "no API key after cred resolution -> fail-open"
   if [ "$event" = "sessionStart" ]; then
     printf '%s' '{"additional_context": "Rogue Security plugin is installed but not configured. Run /rogue:setup to connect your API key."}'
   else
@@ -86,6 +92,7 @@ fi
 
 BASE_URL="${ROGUE_BASE_URL:-https://api.rogue.security}"
 BASE_URL="${BASE_URL%/}"
+dbg "apiKey present (tail $(printf '%s' "$API_KEY" | tail -c 4 2>/dev/null)) baseUrl=$BASE_URL"
 
 # ── actor resolution: explicit creds → git config → whoami/hostname ────────
 _git_cfg() { git config --global "$1" 2>/dev/null; }
@@ -108,8 +115,10 @@ PAYLOAD="$(cat 2>/dev/null)"
 [ -n "$PAYLOAD" ] || PAYLOAD='{}'
 
 # ── POST (fail-open) ───────────────────────────────────────────────────────
-command -v curl >/dev/null 2>&1 || { printf '{}'; exit 0; }
+command -v curl >/dev/null 2>&1 || { dbg "curl not found -> {}"; printf '{}'; exit 0; }
 
+URL="$BASE_URL/api/v1/hooks/cursor"
+dbg "POST $URL actor=$actor_email"
 # -f makes curl emit nothing and exit non-zero on HTTP >= 400, giving us
 # fail-open on non-200 for free (matches rogue-hook.py returning b"").
 RESP="$(printf '%s' "$PAYLOAD" | curl -fsS --max-time 10 -X POST \
@@ -119,7 +128,9 @@ RESP="$(printf '%s' "$PAYLOAD" | curl -fsS --max-time 10 -X POST \
   -H "x-rogue-actor-email: $actor_email" \
   -H "x-rogue-actor-name: $actor_name" \
   -H 'x-rogue-source: cursor' \
-  --data-binary @- "$BASE_URL/api/v1/hooks/cursor" 2>/dev/null)" || RESP=""
+  --data-binary @- "$URL" 2>/dev/null)"; _rc=$?
+dbg "curl rc=$_rc resp_len=${#RESP}"
+[ "$_rc" -eq 0 ] || RESP=""
 
 emit "$RESP"
 exit 0
