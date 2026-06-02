@@ -58,19 +58,6 @@ function Log  { param([string]$Msg) Write-Host "-> $Msg" }
 function Warn { param([string]$Msg) Write-Warning $Msg }
 function Err  { param([string]$Msg) Write-Error   $Msg; exit 1 }
 
-# Locate python3
-$Python = $null
-foreach ($candidate in @('python3', 'python', 'py')) {
-    try {
-        $ver = & $candidate --version 2>&1
-        if ($ver -match 'Python 3') { $Python = $candidate; break }
-    } catch { }
-}
-if (-not $Python) {
-    Err 'python3 is required. Install from https://python.org/downloads or run: winget install Python.Python.3'
-}
-Log "Python: $Python"
-
 # Load creds from existing env files (same priority order as rogue-hook.py: later wins).
 # MDM path on Windows mirrors /etc/rogue/env -> C:\ProgramData\rogue\env.
 function Load-ExistingCreds {

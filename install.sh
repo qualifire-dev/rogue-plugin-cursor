@@ -47,8 +47,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-command -v python3 >/dev/null 2>&1 || err "python3 required"
-command -v curl    >/dev/null 2>&1 || err "curl required"
+command -v curl >/dev/null 2>&1 || err "curl required"
 
 prompt_tty() {
   local var="$1" text="$2" secret="${3:-}"
