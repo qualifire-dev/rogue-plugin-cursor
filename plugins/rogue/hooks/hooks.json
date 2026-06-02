@@ -7,181 +7,181 @@
         "timeout": 20
       },
       {
-        "command": "bash ./scripts/hook.sh sessionStart",
+        "command": "sh ./scripts/hook.sh sessionStart",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) sessionStart\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) sessionStart\"",
         "timeout": 120
       }
     ],
     "sessionEnd": [
       {
-        "command": "bash ./scripts/hook.sh sessionEnd",
+        "command": "sh ./scripts/hook.sh sessionEnd",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) sessionEnd\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) sessionEnd\"",
         "timeout": 120
       }
     ],
     "beforeSubmitPrompt": [
       {
-        "command": "bash ./scripts/hook.sh beforeSubmitPrompt",
+        "command": "sh ./scripts/hook.sh beforeSubmitPrompt",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) beforeSubmitPrompt\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) beforeSubmitPrompt\"",
         "timeout": 120
       }
     ],
     "preToolUse": [
       {
-        "command": "bash ./scripts/hook.sh preToolUse",
+        "command": "sh ./scripts/hook.sh preToolUse",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) preToolUse\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) preToolUse\"",
         "timeout": 120
       }
     ],
     "postToolUse": [
       {
-        "command": "bash ./scripts/hook.sh postToolUse",
+        "command": "sh ./scripts/hook.sh postToolUse",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) postToolUse\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) postToolUse\"",
         "timeout": 120
       }
     ],
     "postToolUseFailure": [
       {
-        "command": "bash ./scripts/hook.sh postToolUseFailure",
+        "command": "sh ./scripts/hook.sh postToolUseFailure",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) postToolUseFailure\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) postToolUseFailure\"",
         "timeout": 120
       }
     ],
     "beforeShellExecution": [
       {
-        "command": "bash ./scripts/hook.sh beforeShellExecution",
+        "command": "sh ./scripts/hook.sh beforeShellExecution",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) beforeShellExecution\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) beforeShellExecution\"",
         "timeout": 120
       }
     ],
     "afterShellExecution": [
       {
-        "command": "bash ./scripts/hook.sh afterShellExecution",
+        "command": "sh ./scripts/hook.sh afterShellExecution",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) afterShellExecution\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) afterShellExecution\"",
         "timeout": 120
       }
     ],
     "beforeMCPExecution": [
       {
-        "command": "bash ./scripts/hook.sh beforeMCPExecution",
+        "command": "sh ./scripts/hook.sh beforeMCPExecution",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) beforeMCPExecution\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) beforeMCPExecution\"",
         "timeout": 120
       }
     ],
     "afterMCPExecution": [
       {
-        "command": "bash ./scripts/hook.sh afterMCPExecution",
+        "command": "sh ./scripts/hook.sh afterMCPExecution",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) afterMCPExecution\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) afterMCPExecution\"",
         "timeout": 120
       }
     ],
     "beforeReadFile": [
       {
-        "command": "bash ./scripts/hook.sh beforeReadFile",
+        "command": "sh ./scripts/hook.sh beforeReadFile",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) beforeReadFile\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) beforeReadFile\"",
         "timeout": 120
       }
     ],
     "afterFileEdit": [
       {
-        "command": "bash ./scripts/hook.sh afterFileEdit",
+        "command": "sh ./scripts/hook.sh afterFileEdit",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) afterFileEdit\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) afterFileEdit\"",
         "timeout": 120
       }
     ],
     "afterAgentResponse": [
       {
-        "command": "bash ./scripts/hook.sh afterAgentResponse",
+        "command": "sh ./scripts/hook.sh afterAgentResponse",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) afterAgentResponse\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) afterAgentResponse\"",
         "timeout": 120
       }
     ],
     "afterAgentThought": [
       {
-        "command": "bash ./scripts/hook.sh afterAgentThought",
+        "command": "sh ./scripts/hook.sh afterAgentThought",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) afterAgentThought\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) afterAgentThought\"",
         "timeout": 120
       }
     ],
     "subagentStart": [
       {
-        "command": "bash ./scripts/hook.sh subagentStart",
+        "command": "sh ./scripts/hook.sh subagentStart",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) subagentStart\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) subagentStart\"",
         "timeout": 120
       }
     ],
     "subagentStop": [
       {
-        "command": "bash ./scripts/hook.sh subagentStop",
+        "command": "sh ./scripts/hook.sh subagentStop",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) subagentStop\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) subagentStop\"",
         "timeout": 120
       }
     ],
     "stop": [
       {
-        "command": "bash ./scripts/hook.sh stop",
+        "command": "sh ./scripts/hook.sh stop",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) stop\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) stop\"",
         "timeout": 120
       }
     ],
     "preCompact": [
       {
-        "command": "bash ./scripts/hook.sh preCompact",
+        "command": "sh ./scripts/hook.sh preCompact",
         "timeout": 120
       },
       {
-        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath ($env:CURSOR_PLUGIN_ROOT + '/scripts/hook.ps1')))) preCompact\"",
+        "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) preCompact\"",
         "timeout": 120
       }
     ]
