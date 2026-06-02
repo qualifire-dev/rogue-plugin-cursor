@@ -31,9 +31,13 @@
 param([string]$EventName = '')
 
 $ErrorActionPreference = 'SilentlyContinue'
+# Invoke-WebRequest renders a progress bar that, when stdout/stderr is
+# redirected (always true under a Cursor hook), can slow the call 10-50x or
+# effectively hang it. Silencing progress is the standard fix.
+$ProgressPreference = 'SilentlyContinue'
 
 function Write-Raw { param([string]$Text) [Console]::Out.Write($Text) }
-function Dbg { param([string]$Msg) if ($env:ROGUE_DEBUG) { [Console]::Error.WriteLine("[rogue] $Msg") } }
+function Dbg { param([string]$Msg) if ($env:ROGUE_DEBUG) { [Console]::Error.WriteLine("[rogue] $Msg"); [Console]::Error.Flush() } }
 
 function Emit-Json {
     param([string]$Data)
