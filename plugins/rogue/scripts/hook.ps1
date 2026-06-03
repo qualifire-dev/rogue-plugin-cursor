@@ -125,6 +125,10 @@ if (-not $actorEmail) {
 # ── payload from stdin ─────────────────────────────────────────────────────
 $payload = [Console]::In.ReadToEnd()
 if (-not $payload) { $payload = '{}' }
+# Cursor on Windows writes the stdin payload with a UTF-8 BOM; [Console]::In
+# decodes those bytes into a leading U+FEFF character. A BOM-prefixed body is
+# not valid JSON, so the API rejects it with HTTP 400. Strip it before POSTing.
+$payload = $payload.TrimStart([char]0xFEFF)
 # TEMP DEBUG: surface what we are about to POST (length + truncated preview).
 Dbg "payload length $($payload.Length): $($payload.Substring(0, [Math]::Min(500, $payload.Length)))"
 
@@ -139,10 +143,14 @@ $headers = @{
 
 $url = "$baseUrl/api/v1/hooks/cursor"
 Dbg "POST $url actor=$actorEmail"
+# Send an explicit UTF-8 byte array: Windows PowerShell 5.1's Invoke-WebRequest
+# re-encodes a string body (commonly to Latin-1), which corrupts non-ASCII
+# prompt content and can reintroduce a BOM. GetBytes() never emits a BOM.
+$bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
 $resp = ''
 try {
     $r = Invoke-WebRequest -Uri $url -Method Post `
-        -Headers $headers -ContentType 'application/json' -Body $payload `
+        -Headers $headers -ContentType 'application/json' -Body $bodyBytes `
         -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
     Dbg "HTTP $($r.StatusCode), body length $($r.Content.Length)"
     if ($r.StatusCode -eq 200) { $resp = [string]$r.Content }

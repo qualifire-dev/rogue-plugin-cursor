@@ -113,6 +113,11 @@ fi
 # ── payload from stdin ─────────────────────────────────────────────────────
 PAYLOAD="$(cat 2>/dev/null)"
 [ -n "$PAYLOAD" ] || PAYLOAD='{}'
+# Strip a leading UTF-8 BOM if present. Cursor on Windows prepends one to the
+# hook payload (hook.ps1 handles it on the native path); a BOM-prefixed body is
+# invalid JSON and the API rejects it with HTTP 400. No-op when absent.
+_bom="$(printf '\357\273\277')"
+PAYLOAD="${PAYLOAD#"$_bom"}"
 
 # ── POST (fail-open) ───────────────────────────────────────────────────────
 command -v curl >/dev/null 2>&1 || { dbg "curl not found -> {}"; printf '{}'; exit 0; }
