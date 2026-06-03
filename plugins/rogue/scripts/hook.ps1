@@ -37,7 +37,8 @@ $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
 function Write-Raw { param([string]$Text) [Console]::Out.Write($Text) }
-function Dbg { param([string]$Msg) if ($env:ROGUE_DEBUG) { [Console]::Error.WriteLine("[rogue] $Msg"); [Console]::Error.Flush() } }
+# TEMP DEBUG: always print (revert by restoring the `if ($env:ROGUE_DEBUG)` gate).
+function Dbg { param([string]$Msg) [Console]::Error.WriteLine("[rogue] $Msg"); [Console]::Error.Flush() }
 
 function Emit-Json {
     param([string]$Data)
@@ -124,6 +125,8 @@ if (-not $actorEmail) {
 # ── payload from stdin ─────────────────────────────────────────────────────
 $payload = [Console]::In.ReadToEnd()
 if (-not $payload) { $payload = '{}' }
+# TEMP DEBUG: surface what we are about to POST (length + truncated preview).
+Dbg "payload length $($payload.Length): $($payload.Substring(0, [Math]::Min(500, $payload.Length)))"
 
 # ── POST (fail-open) ───────────────────────────────────────────────────────
 $headers = @{
@@ -145,6 +148,22 @@ try {
     if ($r.StatusCode -eq 200) { $resp = [string]$r.Content }
 } catch {
     Dbg "POST failed: $($_.Exception.Message)"
+    # TEMP DEBUG: a 4xx/5xx almost always explains itself in the response body.
+    # PS7 stashes it in ErrorDetails.Message; PS5.1 needs the response stream.
+    $errBody = $null
+    if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+        $errBody = $_.ErrorDetails.Message
+    } elseif ($_.Exception.Response) {
+        try {
+            $stream = $_.Exception.Response.GetResponseStream()
+            $sr = New-Object System.IO.StreamReader($stream)
+            $errBody = $sr.ReadToEnd(); $sr.Close()
+        } catch {}
+    }
+    if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+        Dbg "error status: $([int]$_.Exception.Response.StatusCode)"
+    }
+    if ($errBody) { Dbg "error response body: $errBody" }
     $resp = ''
 }
 
