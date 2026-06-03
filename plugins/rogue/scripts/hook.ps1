@@ -56,6 +56,28 @@ function Emit-Json {
     catch { Dbg "response is not JSON -> {}"; Write-Raw '{}' }
 }
 
+function Repair-DoubleEncodedUtf8 {
+    # Cursor on non-UTF-8 Windows locales double-encodes assistant text
+    # (UTF-8 -> CP1252 -> UTF-8): e.g. "—" arrives as "â€"" and "'" as "â€™".
+    # We can't change the client's system locale, so repair it here: re-encode
+    # the string as CP1252 and decode as UTF-8, with BOTH steps STRICT (throw on
+    # any unmappable char / invalid byte). Genuine mojibake round-trips to valid
+    # UTF-8 and is repaired; already-correct text (café, 😀, plain ASCII) fails
+    # the strict round-trip and is returned unchanged — so this is a safe no-op
+    # for well-behaved clients.
+    param([string]$Text)
+    if (-not $Text) { return $Text }
+    try {
+        $cp1252 = [System.Text.Encoding]::GetEncoding(1252,
+            [System.Text.EncoderFallback]::ExceptionFallback,
+            [System.Text.DecoderFallback]::ExceptionFallback)
+        $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+        $repaired = $strictUtf8.GetString($cp1252.GetBytes($Text))
+        if ($repaired -ne $Text) { Dbg "repaired double-encoded UTF-8"; return $repaired }
+    } catch { Dbg "no double-encode repair (text already valid UTF-8)" }
+    return $Text
+}
+
 # Windows PowerShell 5.1 may negotiate only TLS 1.0/1.1 by default, which
 # modern HTTPS endpoints reject ("Could not create SSL/TLS secure channel").
 # Add TLS 1.2 without clobbering any protocols already enabled.
@@ -150,6 +172,10 @@ try {
 # After re-decoding, a UTF-8 BOM is a single U+FEFF char. Strip it: a
 # BOM-prefixed body is invalid JSON and the API rejects it with HTTP 400.
 $payload = $payload.TrimStart([char]0xFEFF)
+
+# Repair Cursor's UTF-8 -> CP1252 -> UTF-8 double-encoding of assistant text,
+# which happens on clients with a non-UTF-8 Windows locale (out of our control).
+$payload = Repair-DoubleEncodedUtf8 $payload
 
 # TEMP DEBUG: confirm the payload now starts with clean JSON ('{' = 007B).
 $head = ($payload.ToCharArray() | Select-Object -First 8 | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ' '
