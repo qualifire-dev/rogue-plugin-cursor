@@ -63,7 +63,7 @@ prompt_tty() {
   printf -v "$var" '%s' "$value"
 }
 
-# Fill unset vars from MDM / per-user env files (same order as rogue-hook.py: later wins).
+# Fill unset vars from MDM / per-user env files (same order as the dispatcher: later wins).
 load_existing_creds() {
   local f
   for f in /etc/rogue/env "$HOME/.rogue-env"; do

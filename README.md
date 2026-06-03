@@ -37,7 +37,8 @@ Get an API key at <https://app.rogue.security/settings/api-keys>.
 plugins/rogue/
   .cursor-plugin/plugin.json      — plugin manifest
   hooks/hooks.json                — every Cursor agent event wired
-  scripts/rogue-hook.py           — dispatcher (single entry point)
+  scripts/hook.sh                 — POSIX-sh + curl dispatcher (macOS/Linux/WSL)
+  scripts/hook.ps1                — PowerShell dispatcher (native Windows)
   scripts/setup.sh                — credential storage helper
   scripts/auto-update.sh          — background 24h auto-updater
   commands/setup.md               — /rogue:setup

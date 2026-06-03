@@ -46,8 +46,7 @@ function Write-Raw {
     $stdout.Write($bytes, 0, $bytes.Length)
     $stdout.Flush()
 }
-# TEMP DEBUG: always print (revert by restoring the `if ($env:ROGUE_DEBUG)` gate).
-function Dbg { param([string]$Msg) [Console]::Error.WriteLine("[rogue] $Msg"); [Console]::Error.Flush() }
+function Dbg { param([string]$Msg) if ($env:ROGUE_DEBUG) { [Console]::Error.WriteLine("[rogue] $Msg"); [Console]::Error.Flush() } }
 
 function Emit-Json {
     param([string]$Data)
@@ -92,7 +91,7 @@ try {
 if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) { Write-Raw '{}'; exit 0 }
 
 if (-not $EventName) { Dbg "no event name -> {}"; Write-Raw '{}'; exit 0 }
-Dbg "event=$EventName rev=bom-byte-strip"
+Dbg "event=$EventName"
 
 # ── credential resolution (later file wins; process env wins over all) ─────
 $creds = @{}
@@ -177,11 +176,6 @@ $payload = $payload.TrimStart([char]0xFEFF)
 # which happens on clients with a non-UTF-8 Windows locale (out of our control).
 $payload = Repair-DoubleEncodedUtf8 $payload
 
-# TEMP DEBUG: confirm the payload now starts with clean JSON ('{' = 007B).
-$head = ($payload.ToCharArray() | Select-Object -First 8 | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ' '
-Dbg "post-fix head codepoints: $head"
-Dbg "payload length $($payload.Length): $($payload.Substring(0, [Math]::Min(500, $payload.Length)))"
-
 # ── POST (fail-open) ───────────────────────────────────────────────────────
 $headers = @{
     'x-rogue-api-key'     = $apiKey
@@ -197,10 +191,6 @@ Dbg "POST $url actor=$actorEmail"
 # re-encodes a string body (commonly to Latin-1), which corrupts non-ASCII
 # prompt content and can reintroduce a BOM. GetBytes() never emits a BOM.
 $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
-# TEMP DEBUG: base64 of the EXACT bytes we POST, so we can decode offline and
-# confirm whether the plugin transmits clean UTF-8 (e.g. ' = E2 80 99) or
-# mojibake. Authoritative for plugin-vs-server attribution.
-Dbg "bodyBytes b64: $([Convert]::ToBase64String($bodyBytes))"
 $resp = ''
 try {
     $r = Invoke-WebRequest -Uri $url -Method Post `
@@ -217,7 +207,7 @@ try {
     }
 } catch {
     Dbg "POST failed: $($_.Exception.Message)"
-    # TEMP DEBUG: a 4xx/5xx almost always explains itself in the response body.
+    # On a 4xx/5xx the body usually explains why; surface it under ROGUE_DEBUG.
     # PS7 stashes it in ErrorDetails.Message; PS5.1 needs the response stream.
     $errBody = $null
     if ($_.ErrorDetails -and $_.ErrorDetails.Message) {

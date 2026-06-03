@@ -58,7 +58,7 @@ function Log  { param([string]$Msg) Write-Host "-> $Msg" }
 function Warn { param([string]$Msg) Write-Warning $Msg }
 function Err  { param([string]$Msg) Write-Error   $Msg; exit 1 }
 
-# Load creds from existing env files (same priority order as rogue-hook.py: later wins).
+# Load creds from existing env files (same priority order as the dispatcher: later wins).
 # MDM path on Windows mirrors /etc/rogue/env -> C:\ProgramData\rogue\env.
 function Load-ExistingCreds {
     $paths = @('C:\ProgramData\rogue\env', (Join-Path $env:USERPROFILE '.rogue-env'))
@@ -120,7 +120,7 @@ try {
 Log 'API key valid.'
 
 # Write env file.
-# Format is `export KEY=value` — matches the regex in rogue-hook.py.
+# Format is `export KEY=value` — matches the regex in hook.ps1.
 # Values containing whitespace or single-quotes are shell-quoted.
 function Format-EnvVal {
     param([string]$Val)

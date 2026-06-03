@@ -18,7 +18,6 @@ Cursor loads at session start. The only "build" is `scripts/build-release.sh`.
 - `plugins/rogue/hooks/hooks.json` — all 18 lifecycle hooks. Every event registers **two** entries: an `sh` one (`hook.sh`) and a PowerShell one (`hook.ps1`). Exactly one does real work per machine (see below).
 - `plugins/rogue/scripts/hook.sh` — the POSIX-sh + `curl` dispatcher. Invoked via `sh` (NOT `bash` — see below), so it is kept POSIX-clean and tested under `dash` (`tests/test_hook_sh.sh`, runs under both `sh` and `TEST_SH=dash`). Runs on macOS / Linux / WSL. **Stands down** (emits `{}`, exits) under Git Bash (`uname` = MINGW/MSYS/CYGWIN) so the PowerShell entry owns native Windows.
 - `plugins/rogue/scripts/hook.ps1` — the PowerShell + `Invoke-WebRequest` dispatcher. Owns native Windows; stands down on non-Windows (`pwsh`). No external binaries (`python`/`node`/`curl`) assumed on either path — the sh path uses `curl`, PowerShell uses `Invoke-WebRequest`.
-- `plugins/rogue/scripts/rogue-hook.py` — **legacy** Python dispatcher, no longer referenced by `hooks.json` (kept for reference + `tests/test_rogue_hook.py`). `hook.sh`/`hook.ps1` are faithful ports. Safe to remove once the shell ports are field-proven.
 - `plugins/rogue/scripts/setup.sh` — writes `~/.rogue-env` (mode 600).
 - `plugins/rogue/scripts/auto-update.sh` — background updater fired from sessionStart. Rate-limited to once per 24h via `~/.rogue/.auto-update-check-cursor`.
 - `plugins/rogue/commands/{setup,status}.md` — slash commands.

@@ -26,8 +26,7 @@
 # empty body, or non-JSON response all yield `{}` on stdout, exit 0. Cursor
 # must never block because Rogue infrastructure is unavailable.
 #
-# Credential resolution (later file wins; process env wins over all), mirroring
-# rogue-hook.py:
+# Credential resolution (later file wins; process env wins over all):
 #   1. ${CURSOR_PLUGIN_ROOT}/env   (baked into a compiled customer plugin)
 #   2. /etc/rogue/env              (MDM-provisioned)
 #   3. ~/.rogue-env                (user / installer-written)
@@ -125,7 +124,7 @@ command -v curl >/dev/null 2>&1 || { dbg "curl not found -> {}"; printf '{}'; ex
 URL="$BASE_URL/api/v1/hooks/cursor"
 dbg "POST $URL actor=$actor_email"
 # -f makes curl emit nothing and exit non-zero on HTTP >= 400, giving us
-# fail-open on non-200 for free (matches rogue-hook.py returning b"").
+# fail-open on non-200 for free.
 RESP="$(printf '%s' "$PAYLOAD" | curl -fsS --max-time 10 -X POST \
   -H 'Content-Type: application/json' \
   -H "x-rogue-api-key: $API_KEY" \
