@@ -171,6 +171,10 @@ Dbg "POST $url actor=$actorEmail"
 # re-encodes a string body (commonly to Latin-1), which corrupts non-ASCII
 # prompt content and can reintroduce a BOM. GetBytes() never emits a BOM.
 $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+# TEMP DEBUG: base64 of the EXACT bytes we POST, so we can decode offline and
+# confirm whether the plugin transmits clean UTF-8 (e.g. ' = E2 80 99) or
+# mojibake. Authoritative for plugin-vs-server attribution.
+Dbg "bodyBytes b64: $([Convert]::ToBase64String($bodyBytes))"
 $resp = ''
 try {
     $r = Invoke-WebRequest -Uri $url -Method Post `
