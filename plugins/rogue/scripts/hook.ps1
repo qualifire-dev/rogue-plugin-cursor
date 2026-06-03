@@ -61,7 +61,7 @@ try {
 if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) { Write-Raw '{}'; exit 0 }
 
 if (-not $EventName) { Dbg "no event name -> {}"; Write-Raw '{}'; exit 0 }
-Dbg "event=$EventName"
+Dbg "event=$EventName rev=bom-byte-strip"
 
 # ── credential resolution (later file wins; process env wins over all) ─────
 $creds = @{}
@@ -125,10 +125,18 @@ if (-not $actorEmail) {
 # ── payload from stdin ─────────────────────────────────────────────────────
 $payload = [Console]::In.ReadToEnd()
 if (-not $payload) { $payload = '{}' }
-# Cursor on Windows writes the stdin payload with a UTF-8 BOM; [Console]::In
-# decodes those bytes into a leading U+FEFF character. A BOM-prefixed body is
-# not valid JSON, so the API rejects it with HTTP 400. Strip it before POSTing.
-$payload = $payload.TrimStart([char]0xFEFF)
+# Strip a leading UTF-8 BOM. Cursor on Windows prepends one (bytes EF BB BF);
+# how it surfaces depends on the console input encoding: a UTF-8 console decodes
+# it to a single U+FEFF char, a single-byte console to the three chars U+00EF
+# U+00BB U+00BF ("ï»¿"). Either form makes the body invalid JSON, so the API
+# rejects it with HTTP 400. Handle both.
+if ($payload.Length -ge 1 -and [int]$payload[0] -eq 0xFEFF) {
+    $payload = $payload.Substring(1)
+    Dbg "stripped U+FEFF BOM char"
+} elseif ($payload.Length -ge 3 -and [int]$payload[0] -eq 0xEF -and [int]$payload[1] -eq 0xBB -and [int]$payload[2] -eq 0xBF) {
+    $payload = $payload.Substring(3)
+    Dbg "stripped EF BB BF BOM chars"
+}
 # TEMP DEBUG: surface what we are about to POST (length + truncated preview).
 Dbg "payload length $($payload.Length): $($payload.Substring(0, [Math]::Min(500, $payload.Length)))"
 
