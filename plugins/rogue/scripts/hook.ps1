@@ -36,7 +36,16 @@ $ErrorActionPreference = 'SilentlyContinue'
 # effectively hang it. Silencing progress is the standard fix.
 $ProgressPreference = 'SilentlyContinue'
 
-function Write-Raw { param([string]$Text) [Console]::Out.Write($Text) }
+function Write-Raw {
+    # Write raw UTF-8 bytes to stdout, bypassing [Console]::Out whose encoding
+    # may be a legacy codepage (e.g. CP437) that mangles non-ASCII output back
+    # into mojibake. Cursor reads the hook's stdout as UTF-8.
+    param([string]$Text)
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+    $stdout = [Console]::OpenStandardOutput()
+    $stdout.Write($bytes, 0, $bytes.Length)
+    $stdout.Flush()
+}
 # TEMP DEBUG: always print (revert by restoring the `if ($env:ROGUE_DEBUG)` gate).
 function Dbg { param([string]$Msg) [Console]::Error.WriteLine("[rogue] $Msg"); [Console]::Error.Flush() }
 
@@ -168,7 +177,14 @@ try {
         -Headers $headers -ContentType 'application/json' -Body $bodyBytes `
         -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
     Dbg "HTTP $($r.StatusCode), body length $($r.Content.Length)"
-    if ($r.StatusCode -eq 200) { $resp = [string]$r.Content }
+    if ($r.StatusCode -eq 200) {
+        # Decode the body explicitly as UTF-8. Invoke-WebRequest's .Content
+        # mis-decodes as ISO-8859-1 when the server omits a charset, turning
+        # UTF-8 punctuation (— ') into mojibake (â€" â€™). RawContentStream
+        # holds the original bytes.
+        try { $resp = [System.Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray()) }
+        catch { $resp = [string]$r.Content }
+    }
 } catch {
     Dbg "POST failed: $($_.Exception.Message)"
     # TEMP DEBUG: a 4xx/5xx almost always explains itself in the response body.
