@@ -125,6 +125,17 @@ if (-not $actorEmail) {
 # ── payload from stdin ─────────────────────────────────────────────────────
 $payload = [Console]::In.ReadToEnd()
 if (-not $payload) { $payload = '{}' }
+# TEMP DEBUG: dump exactly what ReadToEnd produced so we can pin the leading
+# bytes precisely — the console input encoding, the leading char code points,
+# and a base64 of the payload re-encoded via that SAME encoding (which
+# reconstructs the original stdin byte stream for offline inspection).
+try {
+    $enc = [Console]::InputEncoding
+    Dbg "InputEncoding=$($enc.WebName) CP=$($enc.CodePage)"
+    $head = ($payload.ToCharArray() | Select-Object -First 16 | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ' '
+    Dbg "head codepoints: $head"
+    Dbg "payload b64 (via InputEncoding): $([Convert]::ToBase64String($enc.GetBytes($payload)))"
+} catch { Dbg "diag dump failed: $($_.Exception.Message)" }
 # Strip a leading UTF-8 BOM. Cursor on Windows prepends one (bytes EF BB BF);
 # how it surfaces depends on the console input encoding: a UTF-8 console decodes
 # it to a single U+FEFF char, a single-byte console to the three chars U+00EF
