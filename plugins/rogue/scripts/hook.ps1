@@ -125,30 +125,26 @@ if (-not $actorEmail) {
 # ── payload from stdin ─────────────────────────────────────────────────────
 $payload = [Console]::In.ReadToEnd()
 if (-not $payload) { $payload = '{}' }
-# TEMP DEBUG: dump exactly what ReadToEnd produced so we can pin the leading
-# bytes precisely — the console input encoding, the leading char code points,
-# and a base64 of the payload re-encoded via that SAME encoding (which
-# reconstructs the original stdin byte stream for offline inspection).
+# Cursor sends a UTF-8 payload, but the console often reads stdin under a legacy
+# OEM codepage (observed in the field: IBM437), which mojibakes it — e.g. the
+# leading UTF-8 BOM (bytes EF BB BF) decodes to "∩╗┐", not a single U+FEFF.
+# Chasing per-codepage code points is futile, so instead round-trip the string
+# back through the ACTUAL input encoding to recover the original bytes, then
+# decode them as real UTF-8. CP437↔Unicode is a bijection, so this also fully
+# recovers any non-ASCII prompt text. No-op when the console is already UTF-8.
+Dbg "InputEncoding=$([Console]::InputEncoding.WebName) CP=$([Console]::InputEncoding.CodePage)"
 try {
-    $enc = [Console]::InputEncoding
-    Dbg "InputEncoding=$($enc.WebName) CP=$($enc.CodePage)"
-    $head = ($payload.ToCharArray() | Select-Object -First 16 | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ' '
-    Dbg "head codepoints: $head"
-    Dbg "payload b64 (via InputEncoding): $([Convert]::ToBase64String($enc.GetBytes($payload)))"
-} catch { Dbg "diag dump failed: $($_.Exception.Message)" }
-# Strip a leading UTF-8 BOM. Cursor on Windows prepends one (bytes EF BB BF);
-# how it surfaces depends on the console input encoding: a UTF-8 console decodes
-# it to a single U+FEFF char, a single-byte console to the three chars U+00EF
-# U+00BB U+00BF ("ï»¿"). Either form makes the body invalid JSON, so the API
-# rejects it with HTTP 400. Handle both.
-if ($payload.Length -ge 1 -and [int]$payload[0] -eq 0xFEFF) {
-    $payload = $payload.Substring(1)
-    Dbg "stripped U+FEFF BOM char"
-} elseif ($payload.Length -ge 3 -and [int]$payload[0] -eq 0xEF -and [int]$payload[1] -eq 0xBB -and [int]$payload[2] -eq 0xBF) {
-    $payload = $payload.Substring(3)
-    Dbg "stripped EF BB BF BOM chars"
-}
-# TEMP DEBUG: surface what we are about to POST (length + truncated preview).
+    $raw = [Console]::InputEncoding.GetBytes($payload)
+    $payload = [System.Text.Encoding]::UTF8.GetString($raw)
+} catch { Dbg "utf8 re-decode failed: $($_.Exception.Message)" }
+
+# After re-decoding, a UTF-8 BOM is a single U+FEFF char. Strip it: a
+# BOM-prefixed body is invalid JSON and the API rejects it with HTTP 400.
+$payload = $payload.TrimStart([char]0xFEFF)
+
+# TEMP DEBUG: confirm the payload now starts with clean JSON ('{' = 007B).
+$head = ($payload.ToCharArray() | Select-Object -First 8 | ForEach-Object { '{0:X4}' -f [int]$_ }) -join ' '
+Dbg "post-fix head codepoints: $head"
 Dbg "payload length $($payload.Length): $($payload.Substring(0, [Math]::Min(500, $payload.Length)))"
 
 # ── POST (fail-open) ───────────────────────────────────────────────────────
