@@ -18,7 +18,9 @@
 
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$hook = Join-Path $here '..' 'plugins' 'rogue' 'scripts' 'hook.ps1'
+# [IO.Path]::Combine takes many segments on Windows PowerShell 5.1; multi-segment
+# Join-Path is PowerShell 7+ only.
+$hook = [System.IO.Path]::Combine($here, '..', 'plugins', 'rogue', 'scripts', 'hook.ps1')
 
 # Load hook.ps1's functions without executing the dispatcher body.
 $env:ROGUE_PS_LIB_ONLY = '1'
