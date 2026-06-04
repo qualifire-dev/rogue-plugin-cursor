@@ -23,7 +23,7 @@
 # AIDR backend, relay the server's response bytes verbatim. No client policy.
 #
 # Fail-open everywhere: missing API key, missing curl, network error, non-200,
-# empty body, or non-JSON response all yield `{}` on stdout, exit 0. Cursor
+# empty body all yield `{}` on stdout, exit 0. Cursor
 # must never block because Rogue infrastructure is unavailable.
 #
 # Credential resolution (later file wins; process env wins over all):
