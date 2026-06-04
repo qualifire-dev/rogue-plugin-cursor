@@ -28,14 +28,14 @@ Every event in `hooks.json` registers two entries — `sh` and PowerShell — po
 
 ```json
 { "command": "sh ./scripts/hook.sh <eventName>", "timeout": 120 },
-{ "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) <eventName>\"", "timeout": 120 }
+{ "command": "powershell -NoProfile -NonInteractive -Command \"& ([scriptblock]::Create((Get-Content -Raw -LiteralPath (Join-Path $env:CURSOR_PLUGIN_ROOT 'scripts/hook.ps1')))) <eventName>\"", "timeout": 120 }
 ```
 
 Each dispatcher's job: collect creds, POST stdin to `/api/v1/hooks/cursor`, relay the response bytes verbatim. **It does not interpret the response.** The server returns whatever Cursor's hook output schema for that event requires.
 
 Two path subtleties, both learned from real Windows logs:
 - **`sh`, not `bash`.** On Windows, `bash` resolves to the WSL launcher stub (`System32\bash.exe`), which on a machine with no WSL distro prints a UTF-16 "no installed distributions" notice — non-JSON output that breaks Cursor's parse. There is no `sh.exe` stub, so `sh` simply isn't found on a bash-less Windows box → clean fail-open.
-- **The PowerShell path is absolute and single-quoted.** Cursor runs the `sh` entry with cwd = plugin root (so its `./scripts/...` resolves), but runs the PowerShell entry from a *different* cwd, so a relative path fails there. Cursor textually substitutes `$env:CURSOR_PLUGIN_ROOT` into the command **before** PowerShell parses it, injecting the raw path; wrapping it in single quotes (`'$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'`) makes the substituted result a valid string literal instead of a bareword command.
+- **The PowerShell path is resolved at runtime from an env var.** Cursor runs the `sh` entry with cwd = plugin root (so its `./scripts/...` resolves), but runs the PowerShell entry from a *different* cwd, so a relative path fails there. Cursor exposes the plugin root as the **process environment variable** `CURSOR_PLUGIN_ROOT` (the same var `hook.sh` reads at `${CURSOR_PLUGIN_ROOT}` and `hook.ps1` reads at `$env:CURSOR_PLUGIN_ROOT`), so the bootstrap resolves it at runtime with `Join-Path $env:CURSOR_PLUGIN_ROOT 'scripts/hook.ps1'`. It must **not** be single-quoted — single quotes are literal in PowerShell and would never expand. `Join-Path` also keeps a path with spaces intact.
 
 ### Exactly-one-runs (cross-platform arbitration)
 
@@ -56,7 +56,7 @@ Invariants when editing hooks (apply to **both** dispatchers — keep them in lo
 - **`x-rogue-event` is the verbatim Cursor event name (lowerCamelCase)** — no translation. The server's `/api/v1/hooks/cursor` route uses it to look up the correct response schema.
 - **`x-rogue-source: cursor`** distinguishes from the claude integration on the server side.
 - **No client-side policy.** Block/allow/ask is decided by the server. Do not add `ROGUE_BLOCK_MODE` or any other policy flag — if you find yourself wanting one, fix the server instead.
-- **No `-File` / no `-ExecutionPolicy Bypass`.** The PowerShell entry loads logic via `[scriptblock]::Create(Get-Content)` precisely so ExecutionPolicy never applies — this also survives a GPO-enforced policy, which `-ExecutionPolicy Bypass` does not. The only variable in the one-liner is `$env:CURSOR_PLUGIN_ROOT` (Cursor-substituted, single-quoted); avoid adding other `$`/backtick constructs that an outer bootstrap could mangle.
+- **No `-File` / no `-ExecutionPolicy Bypass`.** The PowerShell entry loads logic via `[scriptblock]::Create(Get-Content)` precisely so ExecutionPolicy never applies — this also survives a GPO-enforced policy, which `-ExecutionPolicy Bypass` does not. The only variable in the one-liner is `$env:CURSOR_PLUGIN_ROOT` (a process env var resolved by PowerShell at runtime via `Join-Path`, **not** single-quoted); avoid adding other `$`/backtick constructs that an outer bootstrap could mangle.
 - Timeouts: HTTP client uses 10s; hook `timeout: 120`.
 - Per-event response schemas (which fields each event accepts) live in Cursor's docs and are reproduced in the plan's "Server response contract" section. **Keep that table in sync with Cursor docs** when bumping support for new events.
 
@@ -64,10 +64,10 @@ Invariants when editing hooks (apply to **both** dispatchers — keep them in lo
 
 Both dispatchers are intentionally simple and mirror each other stage-for-stage:
 
-- **creds** — search `${CURSOR_PLUGIN_ROOT}/env` (compiled plugin) → MDM path → per-user file; later wins, process env wins over all. MDM path is `/etc/rogue/env` (bash) / `C:\ProgramData\rogue\env` (PowerShell); per-user is `~/.rogue-env` / `%USERPROFILE%\.rogue-env`. `hook.sh` `source`s the files (they're bash-quoted, valid POSIX sh); `hook.ps1` regex-parses them (same regex as `install.ps1`).
+- **creds** — search `${CURSOR_PLUGIN_ROOT}/env` (compiled plugin) → MDM path → per-user file; later wins, process env wins over all. MDM path is `/etc/rogue/env` (bash) / `C:\ProgramData\rogue\env` (PowerShell); per-user is `~/.rogue-env` / `%USERPROFILE%\.rogue-env`. `hook.sh` `source`s the files (they're bash-quoted, valid POSIX sh); `hook.ps1` regex-matches `export KEY=value` lines and then decodes the shell quoting (single/double quotes + backslash escapes, via `ConvertFrom-ShellQuoted`) so values like `O'Brien` round-trip identically across both dispatchers. The installers must emit POSIX-correct quoting — `install.sh` uses `printf %q`; `install.ps1`'s `Format-EnvVal` escapes `'` as `'\''` (not `'\\''`, which is an unterminated quote).
 - **actor** — email/name. Order: explicit `ROGUE_ACTOR_*` → `git config` → `whoami`/`USERNAME`+`hostname`/`COMPUTERNAME` (last-resort, used when git isn't installed).
 - **POST** — `curl -fsS --max-time 10` (bash) / `Invoke-WebRequest -TimeoutSec 10` (PowerShell). `-f` / `-ErrorAction Stop` give fail-open on non-200.
-- **emit** — relay the response verbatim if it validates as JSON, else `{}`. bash uses a first-char `{`/`[` heuristic (no `jq` dependency); PowerShell uses `ConvertFrom-Json`.
+- **emit** — relay the response verbatim only if it validates as JSON, else `{}`. The sh path validates with `jq` when present (optional, not a hard dependency) and falls back to a conservative open/close-character check when `jq` is absent; PowerShell uses `ConvertFrom-Json`.
 
 Adding a new Cursor event = **two** lines in `hooks.json` (one `sh`, one PowerShell). No dispatcher change needed (the event name is forwarded as `x-rogue-event`). All schema/policy logic lives on the server.
 
@@ -81,7 +81,7 @@ If you change one dispatcher's behavior, change the other to match, and re-run `
 
 ## Things that look weird but are intentional
 
-- The `sh` entry uses a **relative** path (`./scripts/hook.sh`) — Cursor runs it with cwd = plugin root, like the previous Python entries. The PowerShell entry uses an **absolute** path (`'$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'`) because Cursor runs it from a different cwd where the relative path fails. Asymmetric but correct per platform.
+- The `sh` entry uses a **relative** path (`./scripts/hook.sh`) — Cursor runs it with cwd = plugin root, like the previous Python entries. The PowerShell entry builds an **absolute** path at runtime (`Join-Path $env:CURSOR_PLUGIN_ROOT 'scripts/hook.ps1'`) because Cursor runs it from a different cwd where the relative path fails. Asymmetric but correct per platform.
 - The dispatcher is invoked via `sh`, not `bash`, specifically to dodge the WSL `bash.exe` stub on Windows (see "The hook pattern"). Keep `hook.sh` POSIX-clean.
 - The PowerShell one-liner loads logic via `[scriptblock]::Create((Get-Content ...))` rather than `-File`. This sidesteps ExecutionPolicy (including GPO-enforced policy) without `-ExecutionPolicy Bypass`.
 - `hook.sh` `source`s the env files (they are valid POSIX sh); `hook.ps1` regex-parses the same `export KEY=value` format. The format matches the claude plugin so a single env file works for both products.

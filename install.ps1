@@ -125,7 +125,11 @@ Log 'API key valid.'
 function Format-EnvVal {
     param([string]$Val)
     if ($Val -match "[\s']") {
-        return "'" + $Val.Replace("'", "'\\''") + "'"
+        # POSIX single-quote escaping: each ' becomes '\'' (close, escaped ', reopen).
+        # The PS literal "'\''" is exactly the 4 chars ' \ ' ' (backslash is NOT a
+        # PS escape in double quotes). Emitting '\\'' here would be an unterminated
+        # quote that breaks both `hook.sh` sourcing and the hook.ps1 parser.
+        return "'" + $Val.Replace("'", "'\''") + "'"
     }
     return $Val
 }

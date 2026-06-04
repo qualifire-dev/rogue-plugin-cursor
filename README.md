@@ -93,8 +93,8 @@ detection as a false positive in your dashboard. Per-prompt only.
 ## Requirements
 
 - Cursor v2026.x with plugin support
-- **macOS / Linux:** `python3` and `curl` on PATH
-- **Windows:** Python 3 on PATH (`winget install Python.Python.3`); `tar` (ships with Windows 10 1803+)
+- **macOS / Linux:** POSIX `sh` and `curl` on PATH (both are present by default). `jq` is optional — when present it's used to validate backend responses; without it a conservative check is used.
+- **Windows:** PowerShell 5.1+ (built in); `tar` (ships with Windows 10 1803+, used by the installer).
 
 ## License
 

@@ -6,12 +6,14 @@
 # survives a GPO-enforced policy, which -ExecutionPolicy Bypass does not):
 #
 #   powershell -NoProfile -NonInteractive -Command \
-#     "& ([scriptblock]::Create((Get-Content -Raw -LiteralPath '$env:CURSOR_PLUGIN_ROOT/scripts/hook.ps1'))) <event>"
+#     "& ([scriptblock]::Create((Get-Content -Raw -LiteralPath (Join-Path $env:CURSOR_PLUGIN_ROOT 'scripts/hook.ps1')))) <event>"
 #
-# Cursor substitutes $env:CURSOR_PLUGIN_ROOT (the plugin root) into the command
-# before PowerShell parses it; the single quotes make the injected absolute path
-# a string literal. Cursor runs this entry from a cwd that is NOT the plugin
-# root, so a relative path would not resolve here.
+# CURSOR_PLUGIN_ROOT (the plugin root) is exposed as a process ENVIRONMENT
+# VARIABLE, so PowerShell resolves $env:CURSOR_PLUGIN_ROOT at runtime via
+# Join-Path — it must NOT be single-quoted (single quotes are literal in
+# PowerShell and would never expand). Cursor runs this entry from a cwd that is
+# NOT the plugin root, so a relative path would not resolve here. Join-Path also
+# keeps the absolute path intact when it contains spaces.
 #
 # This script OWNS native Windows. It stands down on non-Windows (pwsh on
 # macOS/Linux) because hook.sh runs there.
@@ -55,6 +57,43 @@ function Emit-Json {
     catch { Dbg "response is not JSON -> {}"; Write-Raw '{}' }
 }
 
+function ConvertFrom-ShellQuoted {
+    # Decode one shell "word" the way `hook.sh` would when it `source`s the env
+    # file, so values round-trip across both dispatchers. The env files are
+    # written either POSIX single-quoted with `'\''` escapes (install.ps1) or
+    # via bash `printf %q`, which emits backslash escapes and double quotes
+    # (install.sh). A naive outer-quote strip mangles values like O'Brien
+    # ('O'\''Brien') or "Your Name" (Your\ Name); this walks the string honoring
+    # single quotes, double quotes, and backslash escapes instead.
+    param([string]$Val)
+    if ($null -eq $Val) { return $Val }
+    $sb = [System.Text.StringBuilder]::new()
+    $i = 0; $n = $Val.Length
+    $state = 'normal'   # normal | single | double
+    while ($i -lt $n) {
+        $c = $Val[$i]
+        switch ($state) {
+            'single' {
+                if ($c -eq "'") { $state = 'normal' } else { [void]$sb.Append($c) }
+            }
+            'double' {
+                if ($c -eq '"') { $state = 'normal' }
+                elseif ($c -eq '\' -and ($i + 1) -lt $n -and ('"\$`'.IndexOf($Val[$i+1]) -ge 0)) {
+                    [void]$sb.Append($Val[$i+1]); $i++
+                } else { [void]$sb.Append($c) }
+            }
+            default {
+                if ($c -eq "'") { $state = 'single' }
+                elseif ($c -eq '"') { $state = 'double' }
+                elseif ($c -eq '\' -and ($i + 1) -lt $n) { [void]$sb.Append($Val[$i+1]); $i++ }
+                else { [void]$sb.Append($c) }
+            }
+        }
+        $i++
+    }
+    return $sb.ToString()
+}
+
 function Repair-DoubleEncodedUtf8 {
     # Cursor on non-UTF-8 Windows locales double-encodes assistant text
     # (UTF-8 -> CP1252 -> UTF-8): e.g. "—" arrives as "â€"" and "'" as "â€™".
@@ -76,6 +115,11 @@ function Repair-DoubleEncodedUtf8 {
     } catch { Dbg "no double-encode repair (text already valid UTF-8)" }
     return $Text
 }
+
+# Test seam: dot-sourcing with ROGUE_PS_LIB_ONLY=1 loads the functions above
+# (e.g. ConvertFrom-ShellQuoted) without running the dispatcher. Production
+# never sets this, so the hook always runs its main body.
+if ($env:ROGUE_PS_LIB_ONLY) { return }
 
 # Windows PowerShell 5.1 may negotiate only TLS 1.0/1.1 by default, which
 # modern HTTPS endpoints reject ("Could not create SSL/TLS secure channel").
@@ -111,8 +155,9 @@ foreach ($f in $credFiles) {
     foreach ($line in (Get-Content -LiteralPath $f)) {
         if ($line -match '^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)=(.+)$') {
             $k = $Matches[1]
-            # Strip surrounding single/double quotes (mirrors shlex.split).
-            $v = $Matches[2].Trim() -replace "^'(.*)'$", '$1' -replace '^"(.*)"$', '$1'
+            # Decode shell quoting/escaping so the value round-trips with the
+            # `source`-based parse in hook.sh (mirrors shlex.split).
+            $v = ConvertFrom-ShellQuoted ($Matches[2].Trim())
             $creds[$k] = $v
         }
     }
