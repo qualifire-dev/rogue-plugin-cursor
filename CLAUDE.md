@@ -19,7 +19,6 @@ Cursor loads at session start. The only "build" is `scripts/build-release.sh`.
 - `plugins/rogue/scripts/hook.sh` — the POSIX-sh + `curl` dispatcher. Invoked via `sh` (NOT `bash` — see below), so it is kept POSIX-clean and tested under `dash` (`tests/test_hook_sh.sh`, runs under both `sh` and `TEST_SH=dash`). Runs on macOS / Linux / WSL. **Stands down** (emits `{}`, exits) under Git Bash (`uname` = MINGW/MSYS/CYGWIN) so the PowerShell entry owns native Windows.
 - `plugins/rogue/scripts/hook.ps1` — the PowerShell + `Invoke-WebRequest` dispatcher. Owns native Windows; stands down on non-Windows (`pwsh`). No external binaries (`python`/`node`/`curl`) assumed on either path — the sh path uses `curl`, PowerShell uses `Invoke-WebRequest`.
 - `plugins/rogue/scripts/setup.sh` — writes `~/.rogue-env` (mode 600).
-- `plugins/rogue/scripts/auto-update.sh` — background updater fired from sessionStart. Rate-limited to once per 24h via `~/.rogue/.auto-update-check-cursor`.
 - `plugins/rogue/commands/{setup,status}.md` — slash commands.
 - `scripts/compile-customer-plugin.sh` — builds a flat tarball with `ROGUE_API_KEY` baked into `<plugin_root>/env`. Used to ship an MDM-free install option. Actor identity is NOT baked in — it's resolved per-user at hook-fire time via `_resolve_actor()`.
 
@@ -65,7 +64,7 @@ Invariants when editing hooks (apply to **both** dispatchers — keep them in lo
 
 Both dispatchers are intentionally simple and mirror each other stage-for-stage:
 
-- **creds** — search `${CURSOR_PLUGIN_ROOT}/env` (compiled plugin) → MDM path → per-user file; later wins, process env wins over all. MDM path is `/etc/rogue/env` (bash) / `C:\ProgramData\rogue\env` (PowerShell); per-user is `~/.rogue-env` / `%USERPROFILE%\.rogue-env`. `hook.sh` `source`s the files (they're bash-quoted, like `auto-update.sh` already does); `hook.ps1` regex-parses them (same regex as `install.ps1`).
+- **creds** — search `${CURSOR_PLUGIN_ROOT}/env` (compiled plugin) → MDM path → per-user file; later wins, process env wins over all. MDM path is `/etc/rogue/env` (bash) / `C:\ProgramData\rogue\env` (PowerShell); per-user is `~/.rogue-env` / `%USERPROFILE%\.rogue-env`. `hook.sh` `source`s the files (they're bash-quoted, valid POSIX sh); `hook.ps1` regex-parses them (same regex as `install.ps1`).
 - **actor** — email/name. Order: explicit `ROGUE_ACTOR_*` → `git config` → `whoami`/`USERNAME`+`hostname`/`COMPUTERNAME` (last-resort, used when git isn't installed).
 - **POST** — `curl -fsS --max-time 10` (bash) / `Invoke-WebRequest -TimeoutSec 10` (PowerShell). `-f` / `-ErrorAction Stop` give fail-open on non-200.
 - **emit** — relay the response verbatim if it validates as JSON, else `{}`. bash uses a first-char `{`/`[` heuristic (no `jq` dependency); PowerShell uses `ConvertFrom-Json`.
@@ -78,7 +77,7 @@ If you change one dispatcher's behavior, change the other to match, and re-run `
 
 1. Bump `version` in **both** `plugins/rogue/.cursor-plugin/plugin.json` and `.cursor-plugin/marketplace.json` — keep them in sync.
 2. Commit, tag `vX.Y.Z`, push the tag. `release.yml` builds the tarball and creates the GitHub Release.
-3. `auto-update.sh` on user machines picks up the new release at the next sessionStart (rate-limited 24h).
+3. Team-marketplace installs pick up the new version once Cursor re-reviews and publishes it. One-line (`install.sh`) users re-run the installer to upgrade — there is no background auto-updater.
 
 ## Things that look weird but are intentional
 
@@ -86,8 +85,6 @@ If you change one dispatcher's behavior, change the other to match, and re-run `
 - The dispatcher is invoked via `sh`, not `bash`, specifically to dodge the WSL `bash.exe` stub on Windows (see "The hook pattern"). Keep `hook.sh` POSIX-clean.
 - The PowerShell one-liner loads logic via `[scriptblock]::Create((Get-Content ...))` rather than `-File`. This sidesteps ExecutionPolicy (including GPO-enforced policy) without `-ExecutionPolicy Bypass`.
 - `hook.sh` `source`s the env files (they are valid POSIX sh); `hook.ps1` regex-parses the same `export KEY=value` format. The format matches the claude plugin so a single env file works for both products.
-- `auto-update.sh` runs only on the sh/bash path (sessionStart) and still uses `python3` internally — Windows-native auto-update is not yet implemented; Windows users re-run `install.ps1` to upgrade.
-- `auto-update.sh` uses a separate cache file (`.auto-update-check-cursor`) so the cursor and claude updaters don't fight each other.
 
 ## `rgx!` prefix is server-side
 

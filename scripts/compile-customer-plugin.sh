@@ -131,8 +131,6 @@ cp -R "$SRC"/. "$STAGE"/
   echo "# Source release: ${FROM}"
   printf 'export ROGUE_API_KEY=%q\n' "$KEY"
   [ -n "$BASE_URL" ] && printf 'export ROGUE_BASE_URL=%q\n' "$BASE_URL"
-  # The bundled version is the truth — don't let auto-update clobber it.
-  echo 'export ROGUE_AUTO_UPDATE=0'
 } > "$STAGE/env"
 chmod 600 "$STAGE/env"
 

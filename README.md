@@ -40,7 +40,6 @@ plugins/rogue/
   scripts/hook.sh                 — POSIX-sh + curl dispatcher (macOS/Linux/WSL)
   scripts/hook.ps1                — PowerShell dispatcher (native Windows)
   scripts/setup.sh                — credential storage helper
-  scripts/auto-update.sh          — background 24h auto-updater
   commands/setup.md               — /rogue:setup
   commands/status.md              — /rogue:status
 ```
@@ -77,8 +76,7 @@ configuration — the plugin has no client-side policy flags.
 | `ROGUE_ACTOR_EMAIL` | git config | Sent as `x-rogue-actor-email` header. |
 | `ROGUE_ACTOR_NAME`  | git config | Sent as `x-rogue-actor-name`. |
 | `ROGUE_BASE_URL` | `https://api.rogue.security` | API base URL. |
-| `ROGUE_AUTO_UPDATE` | `1` | Set `0` to disable the background updater. |
-| `ROGUE_PLUGIN_VERSION` | (unpinned) | Pin to a release tag (e.g. `v1.0.0`). |
+| `ROGUE_PLUGIN_VERSION` | (unpinned) | Pin the one-line install to a release tag (e.g. `v1.0.0`). |
 
 Credentials live in `~/.rogue-env` (mode 600), shared with the Claude plugin.
 System-wide MDM can use `/etc/rogue/env`.

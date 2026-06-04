@@ -3,10 +3,6 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "( nohup bash ./scripts/auto-update.sh >/dev/null 2>&1 & )",
-        "timeout": 20
-      },
-      {
         "command": "sh ./scripts/hook.sh sessionStart",
         "timeout": 120
       },

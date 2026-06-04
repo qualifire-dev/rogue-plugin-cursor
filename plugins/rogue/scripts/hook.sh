@@ -66,7 +66,7 @@ if [ -z "$PLUGIN_ROOT" ]; then
 fi
 
 # Env files are bash-quoted (`export KEY=value`, written via printf %q), so
-# sourcing them is correct and matches auto-update.sh's existing approach.
+# sourcing them is correct.
 for _f in "$PLUGIN_ROOT/env" /etc/rogue/env "$HOME/.rogue-env"; do
   if [ -n "$_f" ] && [ -r "$_f" ]; then dbg "cred file found: $_f"; . "$_f" 2>/dev/null
   else dbg "cred file absent: $_f"; fi
