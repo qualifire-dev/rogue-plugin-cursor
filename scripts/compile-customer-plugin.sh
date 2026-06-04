@@ -21,7 +21,6 @@
 # Args:
 #   --key KEY        ROGUE_API_KEY (required)
 #   --from vX.Y.Z    Source release tag (default: latest GitHub release)
-#   --os darwin|linux  Source tarball OS (default: darwin)
 #   --out PATH       Output tarball path (default: ./rogue-aidr-compiled-<ver>.tar.gz)
 #   --base-url URL   Override ROGUE_BASE_URL (rare)
 #   --repo OWNER/REPO  Source repo (default: qualifire-dev/rogue-plugin-cursor)
@@ -35,19 +34,18 @@
 set -euo pipefail
 
 REPO="qualifire-dev/rogue-plugin-cursor"
-KEY=""; FROM=""; OUT=""; BASE_URL=""; OS=""; LOCAL_SRC=""
+KEY=""; FROM=""; OUT=""; BASE_URL=""; LOCAL_SRC=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --key)      KEY="$2"; shift 2 ;;
     --from)     FROM="$2"; shift 2 ;;
-    --os)       OS="$2"; shift 2 ;;
     --out)      OUT="$2"; shift 2 ;;
     --base-url) BASE_URL="$2"; shift 2 ;;
     --repo)     REPO="$2"; shift 2 ;;
     --local)    LOCAL_SRC="$2"; shift 2 ;;
     -h|--help)
-      sed -n '2,33p' "$0" 2>/dev/null
+      sed -n '2,32p' "$0" 2>/dev/null
       exit 0
       ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
@@ -71,11 +69,6 @@ prompt_key() {
 
 prompt_key
 [ -n "$KEY" ] || { echo "API key required" >&2; exit 2; }
-
-case "${OS:-darwin}" in
-  darwin|linux) OS="${OS:-darwin}" ;;
-  *) echo "Bad --os: $OS (expected: darwin|linux)" >&2; exit 2 ;;
-esac
 
 for tool in tar python3; do
   command -v "$tool" >/dev/null 2>&1 || { echo "missing required tool: $tool" >&2; exit 1; }
@@ -102,9 +95,9 @@ else
       | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')
     [ -n "$FROM" ] || { echo "could not resolve latest tag" >&2; exit 1; }
   fi
-  echo "-> using release: $FROM ($OS)"
+  echo "-> using release: $FROM"
 
-  TARBALL_URL="https://github.com/${REPO}/releases/download/${FROM}/rogue-plugin-cursor-${OS}.tar.gz"
+  TARBALL_URL="https://github.com/${REPO}/releases/download/${FROM}/rogue-plugin-cursor.tar.gz"
   echo "-> downloading $TARBALL_URL"
   curl -fsSL "$TARBALL_URL" -o "$WORK/src.tar.gz"
   mkdir -p "$WORK/extract"

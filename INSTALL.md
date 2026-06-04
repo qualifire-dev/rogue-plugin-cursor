@@ -19,7 +19,7 @@ In the Cursor admin dashboard:
 2. Under **Team Marketplaces**, click **Import**.
 3. Paste the repository URL:
   ```
-   https://github.com/qualifire-dev/rogue-plugin-cursorgst
+   https://github.com/qualifire-dev/rogue-plugin-cursor
 
   ```
 4. Cursor parses the marketplace and shows the `rogue` plugin. Set a marketplace **name** (e.g. "Rogue Security") and **description**.
@@ -107,7 +107,9 @@ These environment variables are read from `~/.rogue-env` (or `/etc/rogue/env` fo
 | `ROGUE_PLUGIN_VERSION` | No       | Pin the one-line install to a specific release (e.g. `v1.0.0`).                                            |
 
 
-Both file locations use mode 600. The system-wide `/etc/rogue/env` takes precedence when present.
+Both file locations use mode 600. Credentials are resolved in this order, where **later sources override earlier ones**: compiled plugin `env` (if present) → `/etc/rogue/env` (MDM) → `~/.rogue-env` (per-user) → process environment variables. So a per-user `~/.rogue-env` overrides `/etc/rogue/env`.
+
+> **MDM / required-marketplace note:** because per-user `~/.rogue-env` wins over the MDM `/etc/rogue/env`, a stale per-user file can override an org-managed key or base URL. For enforced rollouts, provision credentials via the process environment (which wins over all files) or ensure no conflicting `~/.rogue-env` exists on managed machines.
 
 ---
 

@@ -34,31 +34,15 @@
 event="${1:-}"
 
 emit() {
-  # Relay $1 verbatim only if it is valid JSON, otherwise `{}` (fail-open).
+  # Relay the server response to Cursor verbatim. We deliberately do NOT validate
+  # the JSON: a 200 from the Rogue API is always valid JSON, and if a malformed
+  # body ever slips through, Cursor ignores it AND logs the raw output — which is
+  # exactly what we want for debugging. Validating here would only let us swallow
+  # that signal (turning it into `{}`) for no gain. Empty body -> `{}`.
   data="$1"
   trimmed="${data#"${data%%[![:space:]]*}"}"   # strip leading whitespace
-  # We only ever emit JSON objects/arrays; anything else is rejected outright.
-  case "$trimmed" in
-    '{'*|'['*) ;;
-    *) printf '{}'; return ;;
-  esac
-  # Validate with jq when present — authoritative, and POSIX-clean (no hard
-  # dependency: jq is optional). This catches malformed bodies like `{not json`
-  # or `{bad}` that pass a first-char check.
-  if command -v jq >/dev/null 2>&1; then
-    if printf '%s' "$data" | jq -e . >/dev/null 2>&1; then printf '%s' "$data"
-    else printf '{}'; fi
-    return
-  fi
-  # No jq: conservative structural fallback — the last non-blank char must close
-  # the opener. Rejects truncated/garbage like `{not json` or `{"a":1`.
-  rtrimmed="${trimmed%"${trimmed##*[![:space:]]}"}"   # strip trailing whitespace
-  first="${trimmed%"${trimmed#?}"}"
-  last="${rtrimmed#"${rtrimmed%?}"}"
-  case "${first}${last}" in
-    '{}'|'[]') printf '%s' "$data" ;;
-    *)         printf '{}' ;;
-  esac
+  [ -z "$trimmed" ] && { printf '{}'; return; }
+  printf '%s' "$data"
 }
 
 # Diagnostics to stderr when ROGUE_DEBUG is set (Cursor logs stderr separately).

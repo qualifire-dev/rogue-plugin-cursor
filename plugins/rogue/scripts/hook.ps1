@@ -53,8 +53,7 @@ function Dbg { param([string]$Msg) if ($env:ROGUE_DEBUG) { [Console]::Error.Writ
 function Emit-Json {
     param([string]$Data)
     if (-not $Data) { Write-Raw '{}'; return }
-    try { $null = $Data | ConvertFrom-Json -ErrorAction Stop; Write-Raw $Data }
-    catch { Dbg "response is not JSON -> {}"; Write-Raw '{}' }
+    Write-Raw $Data
 }
 
 function ConvertFrom-ShellQuoted {

@@ -39,7 +39,8 @@ plugins/rogue/
   hooks/hooks.json                — every Cursor agent event wired
   scripts/hook.sh                 — POSIX-sh + curl dispatcher (macOS/Linux/WSL)
   scripts/hook.ps1                — PowerShell dispatcher (native Windows)
-  scripts/setup.sh                — credential storage helper
+  scripts/setup.sh                — credential storage helper (macOS/Linux)
+  scripts/setup.ps1               — credential storage helper (Windows)
   commands/setup.md               — /rogue:setup
   commands/status.md              — /rogue:status
 ```
@@ -93,7 +94,7 @@ detection as a false positive in your dashboard. Per-prompt only.
 ## Requirements
 
 - Cursor v2026.x with plugin support
-- **macOS / Linux:** POSIX `sh` and `curl` on PATH (both are present by default). `jq` is optional — when present it's used to validate backend responses; without it a conservative check is used.
+- **macOS / Linux:** POSIX `sh` and `curl` on PATH (both are present by default). No other tools are required — the dispatcher relays the backend response to Cursor verbatim (a 200 from the Rogue API is always valid JSON, and Cursor ignores — and logs — any unparseable hook output).
 - **Windows:** PowerShell 5.1+ (built in); `tar` (ships with Windows 10 1803+, used by the installer).
 
 ## License

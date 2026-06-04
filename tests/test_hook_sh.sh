@@ -111,16 +111,17 @@ rm -rf "$TMP_HOME"
 echo "$out" | grep -q '/rogue:setup' || { echo "FAIL: missing setup hint in $out"; exit 1; }
 echo "  ok: unconfigured sessionStart emits /rogue:setup hint"
 
-# ── Case 7: malformed server body → fail open ──────────────────────────────
+# ── Case 7: malformed server body → relayed verbatim ───────────────────────
+# We deliberately do NOT validate the response. A malformed body is passed
+# through so Cursor logs the raw output (debuggable); Cursor ignores it anyway.
 restart_mock 'not json at all'
 out=$(run_dispatcher preToolUse '{}')
-assert_eq "$out" "{}" "malformed JSON → fail open"
+assert_eq "$out" "not json at all" "malformed body relayed verbatim (debuggable)"
 
-# ── Case 7b: JSON-looking but invalid body → fail open ─────────────────────
-# A first-character `{` check would relay this verbatim; emit() must validate.
-restart_mock '{not json'
+# ── Case 7b: JSON-looking but invalid body → relayed verbatim ──────────────
+restart_mock '{not json}'
 out=$(run_dispatcher preToolUse '{}')
-assert_eq "$out" "{}" "JSON-looking-but-invalid body → fail open"
+assert_eq "$out" '{not json}' "brace-wrapped invalid body relayed verbatim"
 
 # ── Case 8: HTTP 500 → fail open ───────────────────────────────────────────
 restart_mock '{"permission":"deny"}' 500
