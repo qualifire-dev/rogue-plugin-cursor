@@ -12,17 +12,15 @@ echo "Building rogue-plugin-cursor v${VERSION}"
 
 mkdir -p dist
 
-for OS in darwin linux; do
-  OUT="dist/rogue-plugin-cursor-${OS}.tar.gz"
-  rm -f "$OUT"
-  tar -czf "$OUT" \
-    --exclude='__pycache__' \
-    --exclude='*.pyc' \
-    .cursor-plugin/marketplace.json \
-    plugins/rogue/.cursor-plugin/ \
-    plugins/rogue/hooks/ \
-    plugins/rogue/scripts/ \
-    plugins/rogue/commands/
-  ls -la "$OUT"
-  echo "Built $OUT"
-done
+OUT="dist/rogue-plugin-cursor.tar.gz"
+rm -f "$OUT"
+tar -czf "$OUT" \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
+  .cursor-plugin/marketplace.json \
+  plugins/rogue/.cursor-plugin/ \
+  plugins/rogue/hooks/ \
+  plugins/rogue/scripts/ \
+  plugins/rogue/commands/
+ls -la "$OUT"
+echo "Built $OUT"

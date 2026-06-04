@@ -7,10 +7,22 @@ operations before they reach production.
 
 ## Install
 
-One-line installer (recommended):
+**macOS / Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.sh | bash
+```
+
+**Windows** (PowerShell 5.1+, run as your normal user):
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.ps1 | iex
+```
+
+Pass credentials via environment variables before the one-liner when running non-interactively:
+
+```powershell
+$env:ROGUE_API_KEY='rsk_xxx'; $env:ROGUE_ACTOR_EMAIL='you@co.com'; iwr -useb https://raw.githubusercontent.com/qualifire-dev/rogue-plugin-cursor/main/install.ps1 | iex
 ```
 
 The installer drops the plugin into `~/.cursor/plugins/local/rogue/`, writes
@@ -25,9 +37,10 @@ Get an API key at <https://app.rogue.security/settings/api-keys>.
 plugins/rogue/
   .cursor-plugin/plugin.json      — plugin manifest
   hooks/hooks.json                — every Cursor agent event wired
-  scripts/rogue-hook.py           — dispatcher (single entry point)
-  scripts/setup.sh                — credential storage helper
-  scripts/auto-update.sh          — background 24h auto-updater
+  scripts/hook.sh                 — POSIX-sh + curl dispatcher (macOS/Linux/WSL)
+  scripts/hook.ps1                — PowerShell dispatcher (native Windows)
+  scripts/setup.sh                — credential storage helper (macOS/Linux)
+  scripts/setup.ps1               — credential storage helper (Windows)
   commands/setup.md               — /rogue:setup
   commands/status.md              — /rogue:status
 ```
@@ -64,8 +77,7 @@ configuration — the plugin has no client-side policy flags.
 | `ROGUE_ACTOR_EMAIL` | git config | Sent as `x-rogue-actor-email` header. |
 | `ROGUE_ACTOR_NAME`  | git config | Sent as `x-rogue-actor-name`. |
 | `ROGUE_BASE_URL` | `https://api.rogue.security` | API base URL. |
-| `ROGUE_AUTO_UPDATE` | `1` | Set `0` to disable the background updater. |
-| `ROGUE_PLUGIN_VERSION` | (unpinned) | Pin to a release tag (e.g. `v1.0.0`). |
+| `ROGUE_PLUGIN_VERSION` | (unpinned) | Pin the one-line install to a release tag (e.g. `v1.0.0`). |
 
 Credentials live in `~/.rogue-env` (mode 600), shared with the Claude plugin.
 System-wide MDM can use `/etc/rogue/env`.
@@ -82,7 +94,8 @@ detection as a false positive in your dashboard. Per-prompt only.
 ## Requirements
 
 - Cursor v2026.x with plugin support
-- `python3` and `curl` on PATH
+- **macOS / Linux:** POSIX `sh` and `curl` on PATH (both are present by default). No other tools are required — the dispatcher relays the backend response to Cursor verbatim (a 200 from the Rogue API is always valid JSON, and Cursor ignores — and logs — any unparseable hook output).
+- **Windows:** PowerShell 5.1+ (built in); `tar` (ships with Windows 10 1803+, used by the installer).
 
 ## License
 

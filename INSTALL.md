@@ -19,7 +19,7 @@ In the Cursor admin dashboard:
 2. Under **Team Marketplaces**, click **Import**.
 3. Paste the repository URL:
   ```
-   https://github.com/qualifire-dev/rogue-plugin-cursorgst
+   https://github.com/qualifire-dev/rogue-plugin-cursor
 
   ```
 4. Cursor parses the marketplace and shows the `rogue` plugin. Set a marketplace **name** (e.g. "Rogue Security") and **description**.
@@ -76,7 +76,6 @@ The installer:
 - Validates the key against `https://api.rogue.security`.
 - Writes `~/.rogue-env` (mode 600).
 - Installs the plugin into `~/.cursor/plugins/local/rogue/`.
-- Enables a background auto-update that runs at most once every 24h.
 
 Non-interactive (suitable for CI or provisioning scripts):
 
@@ -105,11 +104,12 @@ These environment variables are read from `~/.rogue-env` (or `/etc/rogue/env` fo
 | `ROGUE_ACTOR_EMAIL`    | No       | Identifies the developer in the AIDR dashboard.                                                            |
 | `ROGUE_ACTOR_NAME`     | No       | Display name in the dashboard.                                                                             |
 | `ROGUE_BASE_URL`       | No       | Override the API endpoint (default `https://api.rogue.security`).                                          |
-| `ROGUE_AUTO_UPDATE`    | No       | Set `0` to disable the background updater (one-line install only).                                         |
-| `ROGUE_PLUGIN_VERSION` | No       | Pin to a specific release (e.g. `v1.0.0`).                                                                 |
+| `ROGUE_PLUGIN_VERSION` | No       | Pin the one-line install to a specific release (e.g. `v1.0.0`).                                            |
 
 
-Both file locations use mode 600. The system-wide `/etc/rogue/env` takes precedence when present.
+Both file locations use mode 600. Credentials are resolved in this order, where **later sources override earlier ones**: compiled plugin `env` (if present) → `/etc/rogue/env` (MDM) → `~/.rogue-env` (per-user) → process environment variables. So a per-user `~/.rogue-env` overrides `/etc/rogue/env`.
+
+> **MDM / required-marketplace note:** because per-user `~/.rogue-env` wins over the MDM `/etc/rogue/env`, a stale per-user file can override an org-managed key or base URL. For enforced rollouts, provision credentials via the process environment (which wins over all files) or ensure no conflicting `~/.rogue-env` exists on managed machines.
 
 ---
 
@@ -131,8 +131,8 @@ No. Rogue's plugin is fail-open by design: missing API key, network failure, non
 
 **How does the plugin update itself?**
 
-- **Marketplace install:** Cursor manages updates from the marketplace repository automatically.
-- **One-line install:** the plugin runs an auto-updater on each Cursor `sessionStart`, rate-limited to once per 24h. Disable it by setting `ROGUE_AUTO_UPDATE=0`, or pin a version with `ROGUE_PLUGIN_VERSION=v1.0.0`.
+- **Marketplace install (recommended):** Cursor manages updates from the marketplace repository automatically.
+- **One-line install:** there is no background auto-update — re-run the install one-liner to upgrade. Pin a specific release with `ROGUE_PLUGIN_VERSION=v1.0.0`.
 
 **What gets stored on the developer's machine?**
 
