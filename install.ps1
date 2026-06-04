@@ -121,17 +121,15 @@ Log 'API key valid.'
 
 # Write env file.
 # Format is `export KEY=value` — matches the regex in hook.ps1.
-# Values containing whitespace or single-quotes are shell-quoted.
+# Every value is POSIX single-quoted so it is always safe when `hook.sh` sources
+# the file, regardless of which shell-special characters it contains.
 function Format-EnvVal {
     param([string]$Val)
-    if ($Val -match "[\s']") {
-        # POSIX single-quote escaping: each ' becomes '\'' (close, escaped ', reopen).
-        # The PS literal "'\''" is exactly the 4 chars ' \ ' ' (backslash is NOT a
-        # PS escape in double quotes). Emitting '\\'' here would be an unterminated
-        # quote that breaks both `hook.sh` sourcing and the hook.ps1 parser.
-        return "'" + $Val.Replace("'", "'\''") + "'"
-    }
-    return $Val
+    # POSIX single-quote escaping: each ' becomes '\'' (close, escaped ', reopen).
+    # The PS literal "'\''" is exactly the 4 chars ' \ ' ' (backslash is NOT a
+    # PS escape in double quotes). Emitting '\\'' here would be an unterminated
+    # quote that breaks both `hook.sh` sourcing and the hook.ps1 parser.
+    return "'" + $Val.Replace("'", "'\''") + "'"
 }
 
 $envLines = @(
