@@ -271,4 +271,54 @@ try {
 }
 
 Emit-Json $resp
+
+# ── presence heartbeat (sessionStart only) ──────────────────────────────────
+# POSTs /api/v1/hooks/status so this install shows in the dashboard's Coding
+# Agents roster (Connected / version / host / user). Pure side-effect: response
+# ignored, fully wrapped so it can never affect the already-emitted hook
+# response. Runs AFTER Emit-Json; PowerShell has no reliable fire-and-forget
+# across process exit, so this is a sync POST (10s cap) on sessionStart only.
+# Creds/actor were already resolved above.
+if ($EventName -eq 'sessionStart') {
+    try {
+        # Plugin version from the manifest.
+        $hbVer = 'unknown'
+        $hbPj = Join-Path $pluginRoot '.cursor-plugin/plugin.json'
+        if (Test-Path -LiteralPath $hbPj) {
+            try {
+                $v = (Get-Content -Raw -LiteralPath $hbPj | ConvertFrom-Json).version
+                if ($v -match '^[0-9]+\.[0-9]+\.[0-9]+') { $hbVer = $Matches[0] }
+            } catch { Dbg "plugin.json parse failed: $($_.Exception.Message)" }
+        }
+        $hbHost = $env:COMPUTERNAME
+        if (-not $hbHost) { $hbHost = 'unknown' }
+
+        # `agent` is "cursor" (not a display label): the server keys its
+        # latest-version lookup (PLUGIN_REPOS) on this value, so the roster can
+        # flag outdated installs.
+        $hbBody = @{
+            agent_family = 'cursor'
+            agent        = 'cursor'
+            version      = $hbVer
+            host         = $hbHost
+            actor_email  = $actorEmail
+            actor_name   = $actorName
+        } | ConvertTo-Json -Compress
+
+        $hbHeaders = @{
+            'x-rogue-api-key' = $apiKey
+            'x-rogue-source'  = 'cursor'
+        }
+        $hbUrl = "$baseUrl/api/v1/hooks/status"
+        Dbg "heartbeat POST $hbUrl ver=$hbVer host=$hbHost"
+        $hbBytes = [System.Text.Encoding]::UTF8.GetBytes($hbBody)
+        $r = Invoke-WebRequest -Uri $hbUrl -Method Post `
+            -Headers $hbHeaders -ContentType 'application/json' -Body $hbBytes `
+            -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+        Dbg "heartbeat HTTP $($r.StatusCode)"
+    } catch {
+        Dbg "heartbeat POST failed: $($_.Exception.Message)"
+    }
+}
+
 exit 0
