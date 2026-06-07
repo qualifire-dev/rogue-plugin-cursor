@@ -138,5 +138,37 @@ RESP="$(printf '%s' "$PAYLOAD" | curl -fsS --max-time 10 -X POST \
 dbg "curl rc=$_rc resp_len=${#RESP}"
 [ "$_rc" -eq 0 ] || RESP=""
 
+# ── presence heartbeat (sessionStart only, fire-and-forget) ────────────────
+# POSTs /api/v1/hooks/status so this install shows in the dashboard's Coding
+# Agents roster (Connected / version / host / user). Pure side-effect: the POST
+# runs in a detached double-fork with all fds redirected, so neither the relayed
+# response below nor session start ever waits on it, and the response is
+# ignored. Creds/actor were already resolved above.
+if [ "$event" = "sessionStart" ]; then
+  # Plugin version from the manifest, without python/jq.
+  HB_VER="unknown"
+  HB_PJ="$PLUGIN_ROOT/.cursor-plugin/plugin.json"
+  if [ -r "$HB_PJ" ]; then
+    _v=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9][^"]*"' "$HB_PJ" 2>/dev/null \
+          | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+    [ -n "$_v" ] && HB_VER="$_v"
+  fi
+  HB_HOST=$(hostname 2>/dev/null) || HB_HOST=unknown
+  [ -n "$HB_HOST" ] || HB_HOST=unknown
+  # `agent` is "cursor" (not a display label): the server keys its latest-version
+  # lookup (PLUGIN_REPOS) on this value, so the roster can flag outdated installs.
+  hb_esc() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+  HB_BODY=$(printf '{"agent_family":"cursor","agent":"cursor","version":"%s","host":"%s","actor_email":"%s","actor_name":"%s"}' \
+    "$(hb_esc "$HB_VER")" "$(hb_esc "$HB_HOST")" "$(hb_esc "$actor_email")" "$(hb_esc "$actor_name")")
+  dbg "heartbeat POST $BASE_URL/api/v1/hooks/status ver=$HB_VER host=$HB_HOST"
+  ( curl -fsS --max-time 10 -X POST \
+      -H 'Content-Type: application/json' \
+      -H "x-rogue-api-key: $API_KEY" \
+      -H 'x-rogue-source: cursor' \
+      -d "$HB_BODY" \
+      "$BASE_URL/api/v1/hooks/status" \
+      </dev/null >/dev/null 2>&1 & )
+fi
+
 emit "$RESP"
 exit 0

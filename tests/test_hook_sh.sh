@@ -145,6 +145,35 @@ BOM="$(printf '\357\273\277')"
 out=$(run_dispatcher beforeSubmitPrompt "${BOM}{\"prompt\":\"hi\"}")
 assert_body '{"prompt":"hi"}' "leading UTF-8 BOM stripped from POST body"
 
+# ── Case 12: configured sessionStart fires the presence heartbeat ──────────
+# sessionStart triggers a second, detached POST to /api/v1/hooks/status. The
+# heartbeat lands after the relayed event POST (last write wins in the mock's
+# capture file), so poll for it. The relayed response must be unaffected.
+restart_mock '{"additional_context":"hello"}'
+out=$(run_dispatcher sessionStart '{"workspace":"/tmp"}')
+assert_eq "$out" '{"additional_context":"hello"}' "sessionStart response relayed (heartbeat does not interfere)"
+hb_seen=""
+for _ in $(seq 1 50); do
+  path=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("path", ""))' "$HEADERS_FILE" 2>/dev/null || true)
+  [ "$path" = "/api/v1/hooks/status" ] && { hb_seen=1; break; }
+  sleep 0.1
+done
+[ -n "$hb_seen" ] || { echo "FAIL: heartbeat never reached /api/v1/hooks/status"; exit 1; }
+echo "  ok: heartbeat POSTed to /api/v1/hooks/status"
+hb_body=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["body"])' "$HEADERS_FILE")
+echo "$hb_body" | grep -q '"agent_family":"cursor"' || { echo "FAIL: heartbeat body missing agent_family: $hb_body"; exit 1; }
+echo "$hb_body" | grep -q '"agent":"cursor"'        || { echo "FAIL: heartbeat body missing canonical agent: $hb_body"; exit 1; }
+echo "$hb_body" | grep -q '"actor_email":"test@example.com"' || { echo "FAIL: heartbeat body missing actor: $hb_body"; exit 1; }
+echo "  ok: heartbeat body carries agent_family/agent/actor"
+assert_header "x-rogue-api-key" "test-key" "heartbeat forwards x-rogue-api-key"
+
+# ── Case 13: non-sessionStart events do NOT fire the heartbeat ─────────────
+restart_mock '{}'
+out=$(run_dispatcher preToolUse '{"tool_name":"Shell"}')
+sleep 0.5   # give a (buggy) detached heartbeat time to land
+path=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("path", ""))' "$HEADERS_FILE")
+assert_eq "$path" "/api/v1/hooks/cursor" "no heartbeat on non-sessionStart events"
+
 echo
 echo "All hook.sh smoke tests passed."
 
